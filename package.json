@@ -1,0 +1,14 @@
+{
+  "name": "diixflow-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FlowOps Root Workspace Runner",
+  "scripts": {
+    "dev": "pnpm --prefix FlowOps run dev",
+    "dev:all": "pnpm --prefix FlowOps run dev",
+    "dev:web": "pnpm --prefix FlowOps run dev:web",
+    "dev:api": "pnpm --prefix FlowOps run dev:api",
+    "build": "pnpm --prefix FlowOps run build",
+    "test": "pnpm --prefix FlowOps run test"
+  }
+}

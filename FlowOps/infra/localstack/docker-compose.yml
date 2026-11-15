@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  localstack:
+    container_name: flowops-localstack
+    image: localstack/localstack:3.8.1
+    ports:
+      - "127.0.0.1:4566:4566"
+    environment:
+      # Core AWS Services Required by FlowOps
+      - SERVICES=s3,dynamodb,lambda,stepfunctions,iam,sts,cloudwatch,logs
+      - AWS_DEFAULT_REGION=ap-southeast-1
+      - DEFAULT_REGION=ap-southeast-1
+      # Docker Socket & Internal Networking for Lambda execution
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LAMBDA_DOCKER_NETWORK=flowops-network
+      - LAMBDA_EXECUTOR=docker
+      - LOCALSTACK_HOST=localstack:4566
+      - DEBUG=0
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./init:/etc/localstack/init/ready.d"
+    networks:
+      - flowops-network
+
+networks:
+  flowops-network:
+    name: flowops-network

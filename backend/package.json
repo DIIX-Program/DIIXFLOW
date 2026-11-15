@@ -1,0 +1,10 @@
+{
+  "name": "flowops-backend-legacy-redirect",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Legacy Backend directory pointer - FlowOps backend has unified into FlowOps/apps/api",
+  "scripts": {
+    "dev": "pnpm --prefix ../FlowOps run dev",
+    "start": "pnpm --prefix ../FlowOps run dev:api"
+  }
+}

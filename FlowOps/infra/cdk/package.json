@@ -1,0 +1,20 @@
+{
+  "name": "@flowops/infra",
+  "version": "1.0.0",
+  "description": "FlowOps AWS CDK Infrastructure Definition (ap-southeast-1)",
+  "bin": {
+    "flowops-app": "dist/bin/flowops-app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "aws-cdk": "^2.1100.0",
+    "aws-cdk-lib": "^2.170.0",
+    "constructs": "^10.4.2",
+    "typescript": "^5.7.0"
+  }
+}

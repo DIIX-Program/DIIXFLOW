@@ -1,0 +1,136 @@
+/**
+ * FlowOps Master Design Tokens Specification
+ * Extracted from Gustra Operations Reference & Industrial SaaS Principles
+ */
+
+:root {
+  /* Typography Families */
+  --font-sans: 'Urbanist', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Font Scale */
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 12.5px;
+  --fs-md: 13.5px;
+  --fs-base: 14px;
+  --fs-lg: 15px;
+  --fs-xl: 17px;
+  --fs-2xl: 20px;
+  --fs-3xl: 22px;
+  --fs-4xl: 26px;
+  --fs-display: 34px;
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Layout Dimensions */
+  --side-w: 240px;
+  --side-rail: 76px;
+  --header-h: 56px;
+  --max-w: 1520px;
+
+  /* Border Radii */
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-2xl: 24px;
+
+  /* Transition Easing */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Light Theme Surfaces & Colors */
+  --bg: #f0f0ee;
+  --card: #fbfbfa;
+  --card-2: rgba(24, 25, 27, 0.035);
+  --card-3: rgba(24, 25, 27, 0.07);
+  --panel: #fdfdfc;
+  --side-bg: #f6f6f4;
+
+  --ink: #18191b;
+  --ink-2: #36383b;
+  --muted: #5d6064;
+
+  --line: rgba(20, 22, 26, 0.086);
+  --line-strong: rgba(20, 22, 26, 0.16);
+
+  --shadow-sm: 0 1px 2px rgba(20, 22, 26, 0.05);
+  --shadow: 0 1px 2px rgba(20, 22, 26, 0.05), 0 10px 24px -18px rgba(30, 30, 30, 0.18);
+  --shadow-lg: 0 4px 12px rgba(20, 22, 26, 0.08), 0 30px 60px -20px rgba(30, 30, 30, 0.25);
+
+  /* Brand Accents */
+  --accent: #f59e0b;
+  --accent-from: #f6b53c;
+  --accent-to: #e99a0a;
+  --accent-ink: #1f1500;
+  --accent-soft: rgba(245, 158, 11, 0.14);
+  --accent-soft-solid: #fbeccc;
+
+  /* Semantic Status Colors */
+  --good: #1b7647;
+  --good-soft: rgba(27, 118, 71, 0.12);
+  --warn: #9e4a0c;
+  --warn-soft: rgba(158, 74, 12, 0.12);
+  --bad: #b32f37;
+  --bad-soft: rgba(179, 47, 55, 0.12);
+  --info: #0284c7;
+  --info-soft: rgba(2, 132, 199, 0.12);
+
+  /* Operational Step States */
+  --st-running: #2f9a5e;
+  --st-waiting: #d97706;
+  --st-failed: #d23f45;
+  --st-succeeded: #1b7647;
+  --st-queued: #64748b;
+}
+
+[data-theme="dark"], .dark {
+  /* Dark Theme Surfaces & Colors */
+  --bg: #111211;
+  --card: #1a1b1a;
+  --card-2: rgba(240, 240, 232, 0.04);
+  --card-3: rgba(240, 240, 232, 0.08);
+  --panel: #1f201f;
+  --side-bg: #151615;
+
+  --ink: #efefec;
+  --ink-2: #d0d0cb;
+  --muted: #9e9f99;
+
+  --line: rgba(240, 240, 232, 0.086);
+  --line-strong: rgba(240, 240, 232, 0.18);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 32px -20px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.5), 0 34px 80px -26px rgba(0, 0, 0, 0.9);
+
+  --accent: #ffb732;
+  --accent-from: #ffc456;
+  --accent-to: #f5a51a;
+  --accent-ink: #1f1500;
+  --accent-soft: rgba(255, 183, 50, 0.16);
+  --accent-soft-solid: #3a2c10;
+
+  --good: #63d08f;
+  --good-soft: rgba(99, 208, 143, 0.16);
+  --warn: #f2a05c;
+  --warn-soft: rgba(242, 160, 92, 0.16);
+  --bad: #ff8a8a;
+  --bad-soft: rgba(255, 138, 138, 0.16);
+  --info: #84b3f2;
+  --info-soft: rgba(132, 179, 242, 0.16);
+
+  --st-running: #4fc282;
+  --st-waiting: #f59e0b;
+  --st-failed: #ff6b6f;
+  --st-succeeded: #63d08f;
+  --st-queued: #94a3b8;
+}

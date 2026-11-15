@@ -1,0 +1,20 @@
+{
+  "name": "@flowops/workflow-compiler",
+  "version": "1.0.0",
+  "description": "FlowOps Pure TypeScript compiler producing Amazon States Language (ASL) for AWS Step Functions",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/__tests__/compiler.test.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@flowops/contracts": "workspace:*",
+    "@flowops/workflow-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

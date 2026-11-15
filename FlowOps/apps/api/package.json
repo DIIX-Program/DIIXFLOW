@@ -1,0 +1,24 @@
+{
+  "name": "@flowops/api",
+  "version": "1.0.0",
+  "description": "FlowOps backend API handlers, SSRF task executors, and Step Functions approval callbacks",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "predev": "tsc",
+    "dev": "node --watch dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@flowops/aws-adapter": "workspace:*",
+    "@flowops/contracts": "workspace:*",
+    "@flowops/workflow-core": "workspace:*",
+    "@flowops/workflow-compiler": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.6.0",
+    "@types/node": "^22.0.0",
+    "adm-zip": "^0.6.1",
+    "typescript": "^5.7.0"
+  }
+}

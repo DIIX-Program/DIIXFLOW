@@ -1,0 +1,14 @@
+{
+  "name": "@flowops/contracts",
+  "version": "1.0.0",
+  "description": "FlowOps shared TypeScript types, schemas, and domain interfaces",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
