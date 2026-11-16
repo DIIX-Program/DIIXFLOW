@@ -1,0 +1,13 @@
+{
+  "name": "muse-workflow-extension",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chrome Extension Manifest V3 for Muse AI Workflow Studio",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.308",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Muse AI Workflow Studio Runner",
+  "version": "1.0.0",
+  "description": "Browser automation bridge for Muse AI Workflow Studio on https://muse.ai",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://muse.ai/*",
+    "https://*.muse.ai/*"
+  ],
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:*/*",
+      "http://127.0.0.1:*/*"
+    ]
+  },
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://muse.ai/*",
+        "https://*.muse.ai/*"
+      ],
+      "js": ["dist/contentScript.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

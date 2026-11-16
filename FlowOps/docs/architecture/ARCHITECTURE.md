@@ -1,129 +1,131 @@
-# FlowOps System Architecture Specification
+# FlowOps — Muse AI Workflow Studio System Architecture
 
 ## 1. Executive Architecture Summary
 
-FlowOps is an enterprise-grade, AWS-native workflow orchestration platform combining a visual workflow designer inspired by n8n with an industrial operations console inspired by Gustra.
+**Muse AI Workflow Studio** is a local-first, node-based visual studio designed for iterative image and video generation through browser automation on `https://muse.ai/`.
 
-Workflows designed in FlowOps are not executed in memory or on fragile worker containers; instead, they are validated, compiled into **Amazon States Language (ASL)**, and deployed as native **AWS Step Functions Standard** state machines, delivering enterprise durability, zero-maintenance scaling, and deep AWS integration.
-
-Target Primary AWS Region: **ap-southeast-1** (Singapore).
+Inspired by the visual density and interaction paradigms of TobyFlow and modern creative studios, the system operates across three distinct zones on the user's local machine:
+1. **Web Application Zone (`apps/web`)**: A high-density `@xyflow/react` Dark UI canvas with node drag-and-drop, parameter configuration, topological DAG execution engine, and IndexedDB (`Dexie.js`) local-first Blob storage.
+2. **Chrome Extension Zone (`extension/`)**: A Manifest V3 background service worker providing tab discovery, keepalive heartbeats, and chunked binary transfer relays.
+3. **Muse AI Tab Zone (`https://muse.ai/`)**: The user's active, authenticated browser tab injected with a TypeScript Content Script DOM adapter that drives composer uploads via `DataTransfer`, fills prompts via native React property setters, tracks generation lifecycles via `MutationObserver`, and extracts binary media blobs via same-origin fetch.
 
 ---
 
-## 2. Logical Architecture Diagram
+## 2. System Architecture Diagram
 
-```
-+-----------------------------------------------------------------------------------+
-|                                 CLIENT LAYER                                      |
-|                                                                                   |
-|   +---------------------------------------------------------------------------+   |
-|   |             FlowOps Modern Web Application (React 19 / Next.js)           |   |
-|   |  - Gustra Industrial Operations Dashboard                                 |   |
-|   |  - @xyflow/react Graph Canvas (Visual Workflow Editor)                    |   |
-|   |  - Node Detail View (NDV) & Live Input/Output Inspector                   |   |
-|   |  - Approval Inbox & Operational Execution Observer                        |   |
-|   +---------------------------------------------------------------------------+   |
-+----------------------------------------+------------------------------------------+
-                                         | HTTPS (REST / SSE)
-                                         v
-+-----------------------------------------------------------------------------------+
-|                              EDGE & INGRESS LAYER                                 |
-|                                                                                   |
-|   +----------------------------------+    +-----------------------------------+   |
-|   |       Amazon CloudFront CDN      |    |        Amazon Cognito             |   |
-|   |  - S3 Static Web Hosting Origin  |    |  - User Pool & App Client         |   |
-|   |  - TLS 1.3 Termination           |    |  - JWT Claims & Tenant Scopes     |   |
-|   +----------------------------------+    +-----------------+-----------------+   |
-|                                                             |                     |
-|   +---------------------------------------------------------v-----------------+   |
-|   |                    Amazon API Gateway (HTTP API v2)                       |   |
-|   |  - JWT Authorizer (Cognito verification)                                  |   |
-|   |  - CORS & Rate Limiting                                                   |   |
-|   |  - Route Dispatcher                                                       |   |
-|   +-------------------------------------+-------------------------------------+   |
-+-----------------------------------------|-----------------------------------------+
-                                          v
-+-----------------------------------------------------------------------------------+
-|                             BACKEND SERVICES LAYER                                |
-|                                                                                   |
-|   +-------------------+  +-------------------+  +-------------------+  +------+   |
-|   | Workflow Service  |  | Compiler Service  |  | Execution Service |  |Approval  |
-|   | - CRUD Workflows  |  | - DAG Validation  |  | - Start Executions|  |Service|  |
-|   | - Version Mgmt    |  | - IR Generator    |  | - Sync Status     |  | - Task   |
-|   | - Workspace RBAC  |  | - ASL Generator   |  | - Fetch Payloads  |  | Token|   |
-|   +---------+---------+  +---------+---------+  +---------+---------+  +--+---+   |
-+-------------|----------------------|----------------------|---------------|-------+
-              v                      v                      v               v
-+-----------------------------------------------------------------------------------+
-|                            STATE & PERSISTENCE LAYER                              |
-|                                                                                   |
-|   +-----------------------------------------+  +------------------------------+   |
-|   |      Amazon DynamoDB (flowops-main)     |  |     Amazon S3 Artifacts      |   |
-|   |  - On-Demand Single Table Design        |  |  - Full React Flow Graphs    |   |
-|   |  - Workspace, Workflow, Version, Exec   |  |  - Generated ASL Payloads    |   |
-|   |  - High-performance GSIs                |  |  - Large Input/Output Blobs  |   |
-|   +--------------------+--------------------+  +--------------+---------------+   |
-+------------------------|--------------------------------------|-------------------+
-                         v                                      v
-+-----------------------------------------------------------------------------------+
-|                            EXECUTION ENGINE LAYER                                 |
-|                                                                                   |
-|   +---------------------------------------------------------------------------+   |
-|   |                    AWS Step Functions (Standard Mode)                     |   |
-|   |  - Immutable State Machine Versions & Aliases                             |   |
-|   |  - Native Task, Choice, Wait, Succeed, Fail States                        |   |
-|   |  - Human Approval via `.waitForTaskToken` callback                        |   |
-|   |  - Automated Retries with Exponential Backoff                             |   |
-|   +-------------------------------------+-------------------------------------+   |
-|                                         |                                         |
-|                                         v                                         |
-|   +---------------------------------------------------------------------------+   |
-|   |                     AWS Lambda Node Task Executors                        |   |
-|   |  - HTTP Request Task Runner (Rest/GraphQL, timeout, safe DNS)             |   |
-|   |  - Webhook Dispatcher                                                     |   |
-|   |  - Condition Evaluator                                                    |   |
-|   +-------------------------------------+-------------------------------------+   |
-|                                         |                                         |
-|                                         v                                         |
-|   +---------------------------------------------------------------------------+   |
-|   |                     Amazon CloudWatch & Observability                     |   |
-|   |  - Step Functions Execution Logs                                          |   |
-|   |  - Lambda Structured JSON Logs (Pino)                                     |   |
-|   |  - Operational Metrics & Error Alarms                                     |   |
-|   +---------------------------------------------------------------------------+   |
-+-----------------------------------------------------------------------------------+
+```mermaid
+flowchart TB
+    subgraph LocalMachine["User Personal Machine (Existing Chrome Profile)"]
+        subgraph WebAppZone["1. Muse Workflow Studio (Web App - Next.js/React + TypeScript)"]
+            UI["Workflow Canvas UI\n(@xyflow/react + Dark Obsidian/Warm Stone)"]
+            PAL["Node Palette & Config Inspector\n(Input, References, Generation, Output)"]
+            ENG["DAG Workflow Execution Engine\n(Topological Sort, Single-Tab Mutex, AbortController)"]
+            STORE["Zustand Workflow Store"]
+            IDB[("IndexedDB (Dexie.js)\n- workflows\n- assets (Blobs)\n- thumbnails (WebP)\n- executionRuns")]
+            BRIDGE_CLIENT["Extension Bridge Client\n(Port & 256KB Chunked Relay)"]
+        end
+
+        subgraph ExtensionZone["2. Muse Runner Chrome Extension (Manifest V3)"]
+            EXT_CONN["Externally Connectable Listener\n(Origin Allowlist Check)"]
+            SW_ROUTER["Background Service Worker\n(Keepalive Manager & Router)"]
+            TAB_MGR["Muse Tab Coordinator\n(Find Existing Tab / Open Tab)"]
+            CHUNK_RELAY["Binary Chunk Relay Buffer"]
+        end
+
+        subgraph MuseTabZone["3. Tab https://muse.ai/ (Authenticated User Session)"]
+            CS_ADAPTER["Muse Content Script Adapter\n(DOM Controller & Job Tracker)"]
+            DOM_OBSERVER["MutationObserver & State Monitor\n(Pre-Submit Snapshot & Stop Button Watch)"]
+            MUSE_UI["Muse AI Web UI (Hatch)\n[data-hatch-composer-root]\n[data-message-item]"]
+        end
+    end
+
+    UI <--> STORE
+    PAL <--> STORE
+    STORE <--> ENG
+    ENG <--> IDB
+    UI <--> IDB
+    ENG <--> BRIDGE_CLIENT
+
+    BRIDGE_CLIENT <==>|"chrome.runtime.connect\n(externally_connectable Port)"| EXT_CONN
+    EXT_CONN <--> SW_ROUTER
+    SW_ROUTER <--> TAB_MGR
+    SW_ROUTER <--> CHUNK_RELAY
+
+    SW_ROUTER <==>|"chrome.tabs.connect\n(Content Script Port)"| CS_ADAPTER
+    CS_ADAPTER <--> DOM_OBSERVER
+    CS_ADAPTER <-->|"DataTransfer Upload /\nNative Setter / Fetch Media"| MUSE_UI
+    DOM_OBSERVER <-->|"Inspect DOM Changes"| MUSE_UI
 ```
 
 ---
 
-## 3. Component Details & Responsibilities
+## 3. Data Contracts & Domain Boundaries
 
-### 3.1 Frontend Web Client
-- **Framework**: React 19 / Next.js with TypeScript in strict mode.
-- **Workflow Canvas**: `@xyflow/react` v12 with custom memoized node components.
-- **State Separation**:
-  - `editorStore` (Zustand): Local canvas interactions, pan/zoom, selected node, undo/redo stack, dirty state.
-  - `serverState` (TanStack Query): Caching workflows, executions, approvals, connections.
-  - `authStore`: Cognito session, JWT tokens, active workspace ID.
-- **Design System**: Tailored tokens based on Gustra (Warm backdrop, hairline borders, refined typography, semantic color codes).
+### 3.1 Typed Node Port Hierarchy
+To ensure strict correctness and prevent pipeline failures, ports enforce typed connections:
+- `imageOut` → emits `ImageAssetRef[]` (supports up to 9 references per Muse AI limits).
+- `promptOut` → emits `PromptText`.
+- `imagesIn` → receives `ImageAssetRef[]` from Image Nodes or upstream Output Nodes.
+- `promptIn` → receives `PromptText` from Prompt Nodes.
+- `resultOut` → emits `MediaAssetRef` from Muse AI Node.
+- `mediaIn` → receives `MediaAssetRef` on Output Node.
+- `mediaPassthroughOut` → re-emits `MediaAssetRef` as image/video reference for downstream Muse AI nodes (Round-trip chaining).
 
-### 3.2 Workflow Compiler Package (`@flowops/compiler`)
-Decoupled, zero-external-network pure TypeScript package:
-1. **Graph Validator**: Validates unique IDs, connected edges, single entry point, DAG cycle detection using Kahn's algorithm (O(V+E)), and terminal node completeness.
-2. **Intermediate Representation (IR)**: Translates React Flow nodes/edges into an abstract, normalized pipeline graph.
-3. **ASL Generator**: Translates the IR into standard Amazon States Language compliant with AWS Step Functions schema.
-
-### 3.3 AWS Lambda API Handlers
-- **Workflow Handler**: Handles `/workflows`, `/workflows/:id`, `/workflows/:id/versions`.
-- **Compiler / Publish Handler**: Validates graph, compiles ASL, creates/updates Step Functions state machine, publishes immutable version, stores ASL in S3, records version metadata in DynamoDB.
-- **Execution Handler**: Handles `/executions`, `/executions/:id`, `/workflows/:id/run` (calls Step Functions `StartExecution`).
-- **Approval Handler**: Handles `/approvals`, `/approvals/:id/decide`. Validates workspace authorization, retrieves task token securely from DynamoDB, calls Step Functions `SendTaskSuccess` or `SendTaskFailure`.
+### 3.2 9-Phase Muse Execution Lifecycle
+When a `Muse AI Node` executes, its progress reflects the real-world browser automation state:
+1. `Connecting`: Establishing port handshake with Chrome Extension.
+2. `Checking Login`: Verifying authenticated session on `https://muse.ai/`.
+3. `Uploading Images`: Chunking and injecting reference images into the composer's hidden file input via `DataTransfer`.
+4. `Preparing Prompt`: Setting prompt text via native prototype value setter.
+5. `Submitting`: Dispatching Submit / Enter action and taking pre-submit DOM snapshot.
+6. `Generating`: Monitoring progress counter and tracking `[data-testid="hatch-composer-stop-button"]`.
+7. `Collecting Result`: Isolating newly created assistant message, fetching media Blob via same-origin fetch, and slicing into 256KB binary chunks.
+8. `Saving Asset`: Reassembling chunks in Web App and writing to IndexedDB.
+9. `Completed`: Node execution succeeded; preview and downstream ports active.
 
 ---
 
-## 4. Architectural Decisions & Non-Negotiables
+## 4. Local-First Storage Architecture (`Dexie.js`)
 
-1. **Decoupled Execution**: The UI never executes user tasks directly. Step Functions handles execution lifecycle, retries, and state durability.
-2. **Immutable Versions**: Published workflow versions cannot be modified. Any update produces a new sequential version (`v1`, `v2`, `v3`). Executions always link to a specific immutable version ARN.
-3. **Task Token Security**: Step Functions task tokens for human approvals are stored encrypted/isolated in DynamoDB and are never sent to the browser client.
-4. **Least Privilege IAM**: Every Lambda function possesses a dedicated IAM execution role scoped exclusively to its required DynamoDB tables, S3 buckets, and Step Functions actions.
+```mermaid
+erDiagram
+    WORKFLOWS ||--o{ EXECUTION_RUNS : "executes"
+    ASSETS ||--|| THUMBNAILS : "has thumbnail"
+    ASSETS ||--o{ WORKFLOWS : "referenced in"
+
+    WORKFLOWS {
+        string id PK
+        string name
+        json nodes
+        json edges
+        json viewport
+        number updatedAt
+    }
+
+    ASSETS {
+        string assetId PK
+        string sha256
+        string kind "image | video"
+        string fileName
+        string mimeType
+        number sizeBytes
+        blob binaryBlob
+        number createdAt
+    }
+
+    THUMBNAILS {
+        string assetId PK
+        string dataUrl
+        number width
+        number height
+    }
+
+    EXECUTION_RUNS {
+        string runId PK
+        string workflowId FK
+        string status
+        number startedAt
+        number finishedAt
+        json nodeResults
+    }
+```

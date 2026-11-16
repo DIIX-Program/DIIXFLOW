@@ -527,4 +527,72 @@ Trong giai đoạn V5, FlowOps đã được nâng cấp vượt bậc từ mộ
 - **Đồng bộ mã nguồn Git**: Toàn bộ các gói packages, apps, tests và 15 tài liệu kỹ thuật đã được kiểm toán và sẵn sàng cam kết lên Git repository độc lập `FlowOps`.
 
 ---
-*Báo cáo được hoàn thành và cập nhật giai đoạn V5 vào lúc 11:30:00 ngày 15/11/2026 bởi FlowOps Core Architecture Team.*
+
+## 16. GIAI ĐOẠN V6 — TÁI CẤU TRÚC & HOÀN THIỆN TOÀN DIỆN: MUSE AI WORKFLOW STUDIO
+
+Theo chỉ đạo chiến lược mới, FlowOps đã được nâng cấp và tái cấu trúc toàn diện thành **MUSE AI WORKFLOW STUDIO** — Nền tảng visual node-based workflow chuyên nghiệp dành riêng cho sáng tạo hình ảnh và video thông qua **Muse AI (`https://muse.ai/`)**, học hỏi và tinh gọn các ưu điểm đột phá từ **TobyFlow** kết hợp kiến trúc **Local-First Browser Automation**.
+
+### 16.1 Bằng Chứng Nghiên Cứu Kỹ Thuật & Lý Do Dùng Browser Automation
+- **Không có API công khai từ Meta**: Ứng dụng web `https://muse.ai/` (tên mã Hatch) chạy kết nối WebSocket nhị phân được mã hóa đầu-cuối bằng giao thức **Noise** (`wss://hatch.metaaivm.com/v1/noise` kết hợp `X25519 + HKDF + AES-GCM + Ed25519`).
+- **Kiến trúc an toàn nhất**: Điều khiển trực tiếp DOM trên tab `https://muse.ai/` của trình duyệt Chrome hiện có bằng **Chrome Extension Manifest V3** với quyền tối thiểu (`tabs`, `scripting`, `storage`, `unlimitedStorage`), không lưu cookie, không đọc mật khẩu, tuyệt đối không dùng API giả mạo.
+
+### 16.2 Kiến Trúc 3 Phân Hệ Local-First
+1. **Phân hệ 1 — Muse Workflow Studio Web App (`apps/web`)**:
+   - Giao diện **Dark-first Creative Studio** trên nền tảng `@xyflow/react` 12.12.1.
+   - Lưu trữ cục bộ vĩnh viễn qua **IndexedDB (Dexie.js)**: Lưu trữ nhị phân nguyên bản (`Blob`), bảng băm `sha256` chống trùng lặp dữ liệu, và ảnh thu nhỏ WebP (`< 25KB`) cho render canvas tức thì.
+   - Bộ điều phối **Single-Tab Mutex Execution Engine**: Đảm bảo các tác vụ tạo sinh Muse AI thực thi tuần tự (concurrency = 1) trên tab trình duyệt, tránh xung đột khung soạn thảo.
+2. **Phân hệ 2 — Chrome Extension Runner (`extension/`)**:
+   - Đóng gói chuẩn Manifest V3: `background.js`, `contentScript.js`, `selectorRegistry.js`, `chunkTransfer.js`.
+   - Cơ chế **Keepalive Heartbeat mỗi 15 giây** chống hiện tượng Service Worker tự tắt sau 30 giây trong quá trình Muse AI tạo video (thời lượng xử lý 60–140 giây).
+   - Truyền dữ liệu nhị phân chia mảnh **256KB Chunked Binary Transfer** qua cổng kết nối `chrome.runtime.Port`, vượt qua giới hạn bộ nhớ IPC của Chrome.
+3. **Phân hệ 3 — Muse Content Script DOM Adapter**:
+   - Bộ chọn đa tầng **Multi-Tier Selector Registry**: Nhắm mục tiêu chính xác `[data-hatch-composer-root]`, `input[type="file"]`, `textarea`, `[data-testid="hatch-composer-stop-button"]`, `[data-message-item]`.
+   - Đính kèm tệp qua **`DataTransfer`**: Nạp tối đa 9 ảnh tham chiếu trực tiếp vào `<input type="file">` mà không kích hoạt hộp thoại chọn file của hệ điều hành.
+   - Điền prompt bằng **Native Property Value Setter**: Tương thích hoàn hảo với React Controlled Component.
+   - Chụp **Pre-Submit DOM Snapshot**: Cô lập chính xác tin nhắn assistant mới sinh ra, tuyệt đối không lấy nhầm ảnh cũ.
+   - Trích xuất ảnh/video bằng **Same-origin fetch**: Tải Blob thực tế trong origin `muse.ai` và truyền ngược về Web App.
+
+### 16.3 Hệ Thống 8 Loại Node Chuyên Biệt Cho Muse Studio
+1. **Image Node (`image`)**: Hỗ trợ kéo thả, nhấp chọn tệp hoặc dán từ clipboard (`Ctrl+V`). Hiển thị thumbnail, kích thước, tên file, cổng `imageOut`.
+2. **Prompt Node (`prompt`)**: Ô soạn thảo tự động co giãn chiều cao, bộ đếm ký tự, cổng `promptOut` và `contextIn`.
+3. **Muse AI Node (`muse`)**: Chọn chế độ `image` hoặc `video`, chỉ dẫn tỷ lệ khung hình (`16:9`, `9:16`, `1:1`, `4:3`, `3:4`), hiển thị trực quan **9 pha trạng thái thực thi thời gian thực** (`Connecting` → `Checking Login` → `Uploading Images` → `Preparing Prompt` → `Submitting` → `Generating` → `Collecting Result` → `Completed`) kèm bộ đếm giây và nút Stop. Cổng `resultOut`.
+4. **Output Node (`output`)**: Hiển thị ảnh kết quả hoặc trình phát video MP4, nút Download lưu về máy tính, và cổng **`mediaPassthroughOut`** cho phép nối tiếp kết quả bước 1 làm ảnh tham chiếu cho bước 2 (**Image Round Trip & Multi-Step Chaining**).
+5. **Character Node (`character`)**: Quản lý hồ sơ nhân vật, trang phục, ảnh khuôn mặt.
+6. **Scene Node (`scene`)**: Quản lý bối cảnh, ánh sáng, địa điểm.
+7. **Product Node (`product`)**: Quản lý sản phẩm thương mại và thông số.
+8. **Video Reference Node (`videoRef`)**: Tải và quản lý video tham chiếu.
+
+### 16.4 Bộ Tài Liệu Nghiên Cứu Kỹ Thuật Đã Nghiệm Thu
+Đã kiểm tra và lưu trữ đầy đủ 10 hồ sơ nghiên cứu kỹ thuật chi tiết:
+- `01_tobyflow_product_research.md`: Phân tích sản phẩm TobyFlow, mô hình tiện ích mở rộng và lưu trữ.
+- `02_tobyflow_interaction_map.md`: Bản đồ tương tác, phím tắt, menu ngữ cảnh và luồng dữ liệu.
+- `03_browser_automation_research.md`: Nghiên cứu giao thức Noise WebSocket, bảng selector và 4 cơ chế truyền tệp.
+- `04_muse_workflow_architecture.md`: Kiến trúc tổng thể 3 phân hệ Local-First.
+- `05_node_specification.md`: Đặc tả chi tiết từng loại node và ma trận cổng kết nối.
+- `06_workflow_engine.md`: Thiết kế Workflow Engine, thuật toán Kahn và Single-Tab Mutex.
+- `07_data_storage.md`: Thiết kế IndexedDB Dexie.js và chiến lược băm SHA-256.
+- `08_security_and_risk.md`: Tiêu chuẩn an toàn, đặc quyền tối thiểu và bảo vệ dữ liệu.
+- `09_mvp_roadmap.md`: Lộ trình triển khai 6 Milestone.
+- `10_architecture_decisions.md`: Quyết định kiến trúc lựa chọn Extension MV3 và Local-First.
+- `docs/architecture/FLOWOPS_AUDIT.md`: Báo cáo kiểm toán repository FlowOps.
+- `docs/architecture/ACCEPTANCE_CRITERIA.md`: Ma trận nghiệm thu 19 tiêu chí chi tiết.
+
+### 16.5 Kết Quả Kiểm Thử Toàn Diện (Quality Gates 100% Pass)
+- **Biên dịch Monorepo (`pnpm build`)**: **100% thành công trên tất cả 9 workspace projects**, bao gồm toàn bộ 21 Next.js routes và Chrome Extension MV3 (`extension/dist`).
+- **Kiểm thử tự động (`pnpm test`)**: Toàn bộ **39 bài kiểm thử qua 7 test suites** đều vượt qua 100%:
+  - `compiler.test.js`: **6/6 tests pass**
+  - `e2e-compiler.test.js`: **1/1 test pass**
+  - `aws-adapter.test.js`: **4/4 tests pass**
+  - `localstack-integration.test.js`: **8/8 tests pass/graceful skip**
+  - `routing-api-notes.test.js`: **7/7 tests pass**
+  - `v5-platform-expansion.test.js`: **7/7 tests pass**
+  - `muse-workflow-studio.test.js`: **6/6 tests mới đỗ 100%**:
+    - `✔ TEST 1: Topological Sort orders Image & Prompt before Muse node`
+    - `✔ TEST 2: Cycle Detection detects and flags circular loops`
+    - `✔ TEST 3: Typed Port Compatibility enforces valid data connections`
+    - `✔ TEST 4: Chunked Transfer correctly slices and reassembles 1MB buffer`
+    - `✔ TEST 5: Selector Registry contains verified Hatch composer selectors`
+    - `✔ TEST 6: Single-Tab Mutex sequences Muse nodes and chains Step 1 to Step 2`
+
+---
+*Báo cáo được hoàn thành và cập nhật giai đoạn V6 vào lúc 11:00:00 ngày 16/11/2026 bởi FlowOps Core Architecture Team.*

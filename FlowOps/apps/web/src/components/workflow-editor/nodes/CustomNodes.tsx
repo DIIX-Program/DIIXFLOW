@@ -544,6 +544,16 @@ export const GenericWorkflowNode = memo(({ data, selected, type }: NodeProps) =>
 });
 GenericWorkflowNode.displayName = 'GenericWorkflowNode';
 
+import {
+  ImageNode,
+  PromptNode,
+  MuseNode,
+  OutputNode,
+  CharacterNode,
+  SceneNode,
+  ProductNode,
+} from './MuseNodes';
+
 // Base node map
 const baseNodeTypes: Record<string, React.ComponentType<NodeProps>> = {
   triggerManual: TriggerNode,
@@ -555,6 +565,15 @@ const baseNodeTypes: Record<string, React.ComponentType<NodeProps>> = {
   controlSuccess: SuccessNode,
   controlFailure: FailureNode,
   annotationNote: AnnotationNoteNode,
+  // Muse AI Studio Core Nodes
+  image: ImageNode,
+  prompt: PromptNode,
+  muse: MuseNode,
+  output: OutputNode,
+  character: CharacterNode,
+  scene: SceneNode,
+  product: ProductNode,
+  videoRef: ImageNode,
 };
 
 // Dynamically register all 67 nodes from Master Registry

@@ -9,6 +9,7 @@ out/
 
 # TypeScript Build Outputs
 dist/
+!extension/dist/
 build/
 *.tsbuildinfo
 
