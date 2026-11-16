@@ -275,4 +275,134 @@ describe('FlowOps LocalStack Integration & Workflows Test Suite', () => {
     assert.ok(activeUsers.some((u) => u.userId === 'usr_real_devops'));
     assert.strictEqual(activeUsers.find((u) => u.userId === 'usr_real_devops')?.status, 'EDITING');
   });
+
+  test('TEST 9: Full End-to-End Workflow Execution Lifecycle (Graph -> S3 -> Step Functions -> DynamoDB)', async (t) => {
+    if (!isLocalStackUp) {
+      t.skip('LocalStack daemon offline on port 4566. Skipping live E2E test.');
+      return;
+    }
+
+    const tenantId = 'ws-core-enterprise';
+    const workflowId = 'wf-e2e-live-order';
+    const version = 1;
+    const executionId = `exec_e2e_${Date.now()}`;
+
+    // 1. Define and compile workflow
+    const graph = {
+      workflowId,
+      name: 'E2E Live Order Processing',
+      nodes: [
+        { id: 't1', type: 'triggerManual', position: { x: 0, y: 0 }, data: { label: 'Start Order' } },
+        { id: 's1', type: 'controlSuccess', position: { x: 200, y: 0 }, data: { label: 'Complete Order' } },
+      ],
+      edges: [{ id: 'e1', source: 't1', target: 's1' }],
+    };
+
+    const comp = compileWorkflow(graph);
+    assert.strictEqual(comp.success, true);
+    assert.ok(comp.asl);
+
+    // 2. Save graph and ASL artifacts to S3
+    const s3Artifacts = await s3Service.uploadWorkflowArtifacts(
+      tenantId,
+      workflowId,
+      version,
+      graph,
+      comp.asl
+    );
+    assert.ok(s3Artifacts.graphKey);
+    assert.ok(s3Artifacts.aslKey);
+
+    // 3. Save workflow record in DynamoDB
+    await workflowRepo.saveWorkflow(tenantId, {
+      id: workflowId,
+      name: graph.name,
+      description: 'E2E live verification workflow',
+      status: 'PUBLISHED',
+      currentVersion: version,
+      triggerType: 'MANUAL',
+      nodeCount: 2,
+      edgeCount: 1,
+      executionCount: 0,
+      successRate: 100.0,
+      lastExecutedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    });
+
+    // 4. Publish to Step Functions
+    const published = await provider.publishWorkflow({
+      workflowId,
+      name: graph.name,
+      version,
+      aslDefinition: comp.asl,
+    });
+    assert.ok(published.stateMachineArn);
+
+    // 5. Create Execution record in DynamoDB
+    const nowIso = new Date().toISOString();
+    await executionRepo.createExecution(
+      {
+        id: executionId,
+        workflowId,
+        workflowName: graph.name,
+        workflowVersion: version,
+        status: 'RUNNING',
+        triggerType: 'MANUAL',
+        startedAt: nowIso,
+        initiatedBy: 'test:e2e-runner',
+        stepFunctionsExecutionArn: '',
+      },
+      tenantId
+    );
+
+    // 6. Start execution in LocalStack Step Functions
+    const started = await provider.startExecution({
+      stateMachineArn: published.stateMachineArn,
+      executionName: executionId,
+      inputPayload: {
+        orderId: 'ORD-E2E-1001',
+        amount: 250,
+        initiatedBy: 'test:e2e-runner',
+      },
+    });
+    assert.ok(started.executionArn);
+
+    // 7. Poll and describe execution until completion
+    let executionResult = null;
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 600));
+      executionResult = await provider.describeExecution(started.executionArn);
+      if (executionResult.status !== 'RUNNING') break;
+    }
+
+    if (executionResult.status !== 'SUCCEEDED') {
+      console.log('Execution Failed with:', executionResult.error, executionResult.cause);
+    }
+
+    assert.strictEqual(executionResult.status, 'SUCCEEDED');
+
+    // 8. Save execution output to S3
+    const savedArtifacts = await s3Service.saveExecutionArtifacts(executionId, {
+      input: { orderId: 'ORD-E2E-1001', amount: 250 },
+      output: executionResult.output,
+      logs: [{ timestamp: Date.now(), level: 'INFO', message: 'Step Functions execution succeeded' }],
+    });
+    assert.ok(savedArtifacts.outputKey);
+
+    // 9. Update execution in DynamoDB
+    await executionRepo.updateExecutionStatus(executionId, 'SUCCEEDED', {
+      durationMs: 450,
+      endedAt: new Date().toISOString(),
+    });
+
+    // 10. Verify final state in DynamoDB
+    const finalRecord = await executionRepo.getExecution(executionId);
+    assert.strictEqual(finalRecord?.status, 'SUCCEEDED');
+    assert.strictEqual(finalRecord?.workflowId, workflowId);
+
+    // 11. Verify output in S3
+    const s3Output = await s3Service.getArtifactJson(savedArtifacts.outputKey);
+    assert.ok(s3Output);
+  });
 });

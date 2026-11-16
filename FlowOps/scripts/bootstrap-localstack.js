@@ -147,25 +147,25 @@ async function seedData() {
     })
   );
 
-  // 2. Default Workflow
+  // 2. Muse AI Studio Workflow
   await docClient.send(
     new PutCommand({
       TableName: TABLE_NAME,
       Item: {
         PK: 'WORKSPACE#ws-core-enterprise',
-        SK: 'WORKFLOW#wf-order-fulfillment-prod',
+        SK: 'WORKFLOW#workflow-korean-baseball-fancam',
         GSI1PK: 'STATUS#PUBLISHED',
         GSI1SK: now,
-        id: 'wf-order-fulfillment-prod',
-        name: 'Order Fulfillment & Risk Gate',
-        description: 'Validates charges, checks fraud thresholds, and requests manager signoff.',
+        id: 'workflow-korean-baseball-fancam',
+        name: 'Workflow - Korean Baseball Fan-Cam Sho',
+        description: 'Two-image character outfit transfer for Korean baseball fan-cam video generation on Muse AI.',
         status: 'PUBLISHED',
-        currentVersion: 3,
-        triggerType: 'WEBHOOK',
-        nodeCount: 6,
-        edgeCount: 5,
-        executionCount: 142,
-        successRate: 99.4,
+        currentVersion: 1,
+        triggerType: 'MANUAL',
+        nodeCount: 4,
+        edgeCount: 3,
+        executionCount: 1,
+        successRate: 100.0,
         lastExecutedAt: now,
         updatedAt: now,
         createdAt: now,

@@ -167,18 +167,24 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
   const saveToIndexedDb = useCallback(async () => {
     try {
       const viewport = reactFlowInstance.getViewport();
+      const currentNodes = reactFlowInstance.getNodes();
+      const currentEdges = reactFlowInstance.getEdges();
       await db.workflows.put({
         id: workflowId,
         name: workflowName,
         schemaVersion: 1,
-        nodes,
-        edges,
+        nodes: currentNodes,
+        edges: currentEdges,
         viewport,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
     } catch {}
-  }, [workflowId, workflowName, nodes, edges, reactFlowInstance]);
+  }, [workflowId, workflowName, reactFlowInstance]);
+
+  const onNodeDragStart = useCallback(() => {
+    // Avoid heavy inspector re-renders while dragging
+  }, []);
 
   const onNodeDragStop = useCallback(() => {
     saveToIndexedDb();
@@ -316,24 +322,38 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
           ...prev,
           { timestamp: Date.now(), level: 'success', message: `Step completed: [${nodeId}]` },
         ]);
-        setNodes((nds) =>
-          nds.map((n) => {
+        const resUrl = output?.blob ? URL.createObjectURL(output.blob) : undefined;
+        setNodes((nds) => {
+          const outgoingTargets = edges.filter((e) => e.source === nodeId).map((e) => e.target);
+          return nds.map((n) => {
             if (n.id === nodeId) {
-              const resUrl = output?.blob ? URL.createObjectURL(output.blob) : n.data.resultUrl;
               return {
                 ...n,
                 data: {
                   ...n.data,
                   status: 'Completed',
                   phase: 'Completed',
-                  resultUrl: resUrl,
+                  resultUrl: resUrl || n.data.resultUrl,
+                  output,
+                },
+              };
+            }
+            if (outgoingTargets.includes(n.id)) {
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  status: 'Completed',
+                  phase: 'Completed',
+                  resultUrl: resUrl || n.data.resultUrl,
+                  media: output,
                   output,
                 },
               };
             }
             return n;
-          })
-        );
+          });
+        });
       },
 
       executeMuseJob: async (context) => {
@@ -470,6 +490,7 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
+          onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onSelectionDragStop={onSelectionDragStop}
           onMoveEnd={onMoveEnd}
@@ -478,6 +499,8 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
           elevateNodesOnSelect={false}
           nodesDraggable={true}
           nodesConnectable={true}
+          nodeDragThreshold={1}
+          elementsSelectable={true}
           defaultViewport={{ x: 0, y: 0, zoom: 0.75 }}
           minZoom={0.15}
           maxZoom={2.5}

@@ -106,4 +106,87 @@ export class S3ArtifactService {
     const key = `${this.getArtifactKeyPrefix(tenantId, workflowId, version)}/definition.asl.json`;
     return this.getArtifactJson(key);
   }
+
+  // --- Execution Artifacts (Input, Output, Logs) ---
+  async saveExecutionArtifacts(
+    executionId: string,
+    artifacts: { input?: unknown; output?: unknown; logs?: unknown }
+  ): Promise<{ inputKey?: string; outputKey?: string; logsKey?: string }> {
+    const prefix = `executions/${executionId}`;
+    const result: { inputKey?: string; outputKey?: string; logsKey?: string } = {};
+
+    const uploads: Promise<any>[] = [];
+
+    if (artifacts.input !== undefined) {
+      result.inputKey = `${prefix}/input.json`;
+      uploads.push(
+        this.client.send(
+          new PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: result.inputKey,
+            Body: JSON.stringify(artifacts.input, null, 2),
+            ContentType: 'application/json',
+          })
+        )
+      );
+    }
+
+    if (artifacts.output !== undefined) {
+      result.outputKey = `${prefix}/output.json`;
+      uploads.push(
+        this.client.send(
+          new PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: result.outputKey,
+            Body: JSON.stringify(artifacts.output, null, 2),
+            ContentType: 'application/json',
+          })
+        )
+      );
+    }
+
+    if (artifacts.logs !== undefined) {
+      result.logsKey = `${prefix}/logs.json`;
+      uploads.push(
+        this.client.send(
+          new PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: result.logsKey,
+            Body: JSON.stringify(artifacts.logs, null, 2),
+            ContentType: 'application/json',
+          })
+        )
+      );
+    }
+
+    await Promise.all(uploads);
+    return result;
+  }
+
+  // --- Media & Reference Assets (Images, Videos) ---
+  async uploadMediaAsset(
+    assetId: string,
+    data: Buffer | Uint8Array | string,
+    mimeType: string,
+    kind: 'images' | 'videos' | 'references' = 'images'
+  ): Promise<{ key: string; bucket: string; publicUrl: string }> {
+    const extension = mimeType.includes('video') ? 'mp4' : mimeType.includes('webp') ? 'webp' : 'png';
+    const key = `assets/${kind}/${assetId}.${extension}`;
+
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        Body: data,
+        ContentType: mimeType,
+      })
+    );
+
+    const env = getEnvironmentConfig();
+    const publicUrl = env.isLocal
+      ? `${env.endpoint}/${this.bucketName}/${key}`
+      : `https://${this.bucketName}.s3.${env.region}.amazonaws.com/${key}`;
+
+    return { key, bucket: this.bucketName, publicUrl };
+  }
 }

@@ -84,7 +84,7 @@ export function buildIR(graph: ReactFlowGraph): IRGraph {
       const maxRetries = Number(node.data.maxRetries) || 3;
       irNode.retry = [
         {
-          errorEquals: ['States.Http.CustomCode', 'States.Timeout', 'States.TaskFailed', 'Lambda.ServiceException'],
+          errorEquals: ['States.Timeout', 'States.TaskFailed', 'Lambda.ServiceException'],
           intervalSeconds: 2,
           maxAttempts: maxRetries,
           backoffRate: 2.0,

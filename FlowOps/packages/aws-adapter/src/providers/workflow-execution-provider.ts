@@ -75,7 +75,7 @@ export class StepFunctionsExecutionProvider implements WorkflowExecutionProvider
 
   async publishWorkflow(input: PublishWorkflowInput): Promise<PublishedWorkflow> {
     const roleArn = input.roleArn || this.env.stateMachineRoleArn;
-    const stateMachineName = `FlowOps_${input.workflowId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    const stateMachineName = `FlowOps_${input.workflowId.replace(/[^a-zA-Z0-9]/g, '_')}`;
     const definitionString = JSON.stringify(input.aslDefinition);
 
     let stateMachineArn = '';

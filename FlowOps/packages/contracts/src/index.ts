@@ -181,6 +181,15 @@ export interface ASLWaitState extends ASLBaseState {
   End?: boolean;
 }
 
+export interface ASLPassState extends ASLBaseState {
+  Type: 'Pass';
+  Result?: unknown;
+  ResultPath?: string;
+  Parameters?: Record<string, unknown>;
+  Next?: string;
+  End?: boolean;
+}
+
 export interface ASLSucceedState extends ASLBaseState {
   Type: 'Succeed';
 }
@@ -195,6 +204,7 @@ export type ASLState =
   | ASLTaskState
   | ASLChoiceState
   | ASLWaitState
+  | ASLPassState
   | ASLSucceedState
   | ASLFailState;
 

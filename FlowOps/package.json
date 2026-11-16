@@ -35,6 +35,15 @@
     "test:local": "node --test tests/localstack-integration.test.js",
     "test:all": "node --test packages/workflow-compiler/dist/__tests__/compiler.test.js && node --test tests/e2e-compiler.test.js && node --test packages/aws-adapter/dist/__tests__/aws-adapter.test.js && node --test tests/localstack-integration.test.js"
   },
+  "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.750.0",
+    "@aws-sdk/lib-dynamodb": "^3.750.0",
+    "@aws-sdk/client-s3": "^3.750.0",
+    "@aws-sdk/client-sfn": "^3.750.0",
+    "@aws-sdk/client-lambda": "^3.750.0",
+    "@aws-sdk/client-iam": "^3.750.0",
+    "adm-zip": "^0.6.1"
+  },
   "keywords": [
     "workflow",
     "orchestration",

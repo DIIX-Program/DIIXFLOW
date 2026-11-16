@@ -65,8 +65,18 @@ async function packageHandler(fileName) {
   // Include the compiled handler file as root file in the zip
   zip.addLocalFile(handlerPath, '', fileName);
 
-  // Include simple package.json indicating type: module
-  zip.addFile('package.json', Buffer.from(JSON.stringify({ type: 'module' }, null, 2)));
+  // Include simple package.json indicating type: commonjs
+  zip.addFile('package.json', Buffer.from(JSON.stringify({ type: 'commonjs' }, null, 2)));
+
+  // Include @flowops/aws-adapter module for Lambda runtime resolution
+  const adapterDistDir = path.join(ROOT_DIR, 'packages/aws-adapter/dist');
+  if (fs.existsSync(adapterDistDir)) {
+    zip.addLocalFolder(adapterDistDir, 'node_modules/@flowops/aws-adapter');
+    zip.addFile(
+      'node_modules/@flowops/aws-adapter/package.json',
+      Buffer.from(JSON.stringify({ name: '@flowops/aws-adapter', main: 'index.js' }, null, 2))
+    );
+  }
 
   return zip.toBuffer();
 }

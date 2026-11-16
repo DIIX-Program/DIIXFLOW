@@ -12,11 +12,49 @@ export interface AppEnvironment {
   isLocal: boolean;
 }
 
+export function validateEnvironmentConfig(config: AppEnvironment): void {
+  if (config.mode === 'localstack') {
+    if (!config.endpoint) {
+      throw new Error(
+        '[FlowOps Configuration Error] EXECUTION_PROVIDER=localstack requires a valid LOCALSTACK_ENDPOINT (default: http://localhost:4566).'
+      );
+    }
+    if (config.endpoint.includes('amazonaws.com')) {
+      throw new Error(
+        '[FlowOps Configuration Error] EXECUTION_PROVIDER=localstack cannot target AWS production domains. Prevented accidental cloud invocation.'
+      );
+    }
+    if (!config.credentials?.accessKeyId || !config.credentials?.secretAccessKey) {
+      throw new Error(
+        '[FlowOps Configuration Error] LocalStack mode requires credentials (default: test/test).'
+      );
+    }
+  } else if (config.mode === 'aws') {
+    if (config.endpoint) {
+      throw new Error(
+        '[FlowOps Configuration Error] EXECUTION_PROVIDER=aws must not specify a LOCALSTACK_ENDPOINT.'
+      );
+    }
+    if (
+      config.credentials?.accessKeyId === 'test' ||
+      config.credentials?.secretAccessKey === 'test'
+    ) {
+      throw new Error(
+        '[FlowOps Configuration Error] Production AWS mode must not use test credentials.'
+      );
+    }
+  }
+}
+
+let cachedEnv: AppEnvironment | null = null;
+
 export function getEnvironmentConfig(): AppEnvironment {
+  if (cachedEnv) return cachedEnv;
+
   const provider = (process.env.EXECUTION_PROVIDER || 'localstack').toLowerCase();
   const isLocal = provider === 'localstack';
   const region = isLocal
-    ? process.env.LOCALSTACK_REGION || 'ap-southeast-1'
+    ? process.env.LOCALSTACK_REGION || process.env.AWS_REGION || 'ap-southeast-1'
     : process.env.AWS_REGION || 'ap-southeast-1';
 
   const endpoint = isLocal
@@ -30,7 +68,7 @@ export function getEnvironmentConfig(): AppEnvironment {
       }
     : undefined;
 
-  return {
+  const config: AppEnvironment = {
     mode: isLocal ? 'localstack' : 'aws',
     region,
     endpoint,
@@ -44,4 +82,13 @@ export function getEnvironmentConfig(): AppEnvironment {
         : 'arn:aws:iam::123456789012:role/FlowOpsStepFunctionsExecutionRole'),
     isLocal,
   };
+
+  validateEnvironmentConfig(config);
+  cachedEnv = config;
+  return config;
+}
+
+// Reset cache for testing or runtime environment updates
+export function resetEnvironmentConfigCache(): void {
+  cachedEnv = null;
 }

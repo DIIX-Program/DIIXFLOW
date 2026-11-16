@@ -64,9 +64,12 @@ export const MuseTopBar = memo(function MuseTopBar({
     <header className="h-14 bg-[#0a0b0d] border-b border-[#1c1f24] px-4 flex items-center justify-between text-stone-200 select-none z-30">
       {/* Left: Brand / Title / Active Switch */}
       <div className="flex items-center gap-3">
-        {/* Neon Green Brand Icon */}
-        <div className="w-6 h-6 rounded-full bg-[#a3e635] text-black flex items-center justify-center font-black text-sm shadow-[0_0_12px_rgba(163,230,53,0.5)] cursor-pointer">
-          ✦
+        {/* Neon Green Brand Icon + Toby Flow Title */}
+        <div className="flex items-center gap-2 mr-1">
+          <div className="w-6 h-6 rounded-full bg-[#bef264] text-black flex items-center justify-center font-black text-sm shadow-[0_0_12px_rgba(190,242,100,0.6)] cursor-pointer">
+            ✦
+          </div>
+          <span className="font-bold text-xs text-stone-100 tracking-tight select-none">Toby Flow</span>
         </div>
 
         {/* Workflow Title */}
@@ -116,41 +119,41 @@ export const MuseTopBar = memo(function MuseTopBar({
           <span>0 fl</span>
         </div>
 
-        {/* Max Speed AI */}
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#14161a] border border-[#252a33] text-stone-200 text-xs font-semibold hover:border-stone-500 transition-colors shadow-sm">
+        {/* Max Speed AIR */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#14161a] border border-[#252a33] text-stone-200 text-xs font-semibold shadow-sm select-none">
           <Sparkles className="w-3.5 h-3.5 text-sky-400" />
           <span>Max Speed</span>
-          <span className="px-1 py-0.2 rounded bg-sky-500/20 text-sky-400 text-[10px] font-mono">AI</span>
+          <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 text-[10px] font-mono font-bold">AIR</span>
           <span className="text-amber-400 text-xs">👑</span>
-        </button>
+        </div>
 
         {/* Reset Button */}
         <button
           onClick={onReset}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#14161a] border border-[#252a33] text-stone-300 text-xs font-semibold hover:border-stone-500 transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#14161a] border border-[#252a33] text-stone-300 text-xs font-semibold hover:border-stone-500 transition-colors shadow-sm cursor-pointer"
           title="Reset canvas"
         >
           <RotateCcw className="w-3.5 h-3.5 text-stone-400" />
           <span>Reset</span>
         </button>
 
-        {/* Save Button (White Solid Pill) */}
-        <button
-          onClick={onSave}
-          className="px-4 py-1.5 rounded-xl bg-stone-100 hover:bg-white text-black text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-        >
-          Save
-        </button>
-
         {/* Lock Toggle */}
         <button
           onClick={() => setIsLocked(!isLocked)}
-          className={`w-8 h-8 rounded-xl border flex items-center justify-center text-xs transition-colors ${
-            isLocked ? 'bg-amber-500/15 border-amber-500/40 text-amber-400' : 'bg-[#14161a] border-[#252a33] text-stone-400 hover:text-stone-200'
+          className={`w-8 h-8 rounded-xl border flex items-center justify-center text-xs transition-colors cursor-pointer ${
+            isLocked ? 'bg-amber-500/15 border-amber-500/40 text-amber-400' : 'bg-[#14161a] border-[#252a33] text-amber-400 hover:text-amber-300'
           }`}
           title={isLocked ? 'Canvas locked' : 'Canvas unlocked'}
         >
           {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+        </button>
+
+        {/* Save Button (White Solid Pill) */}
+        <button
+          onClick={onSave}
+          className="px-5 py-1.5 rounded-xl bg-white text-black text-xs font-extrabold shadow-md hover:bg-stone-100 active:scale-95 transition-transform cursor-pointer"
+        >
+          Save
         </button>
 
         {/* Extension Bridge Pill */}

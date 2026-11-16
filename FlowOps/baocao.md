@@ -596,3 +596,51 @@ Theo chỉ đạo chiến lược mới, FlowOps đã được nâng cấp và t
 
 ---
 *Báo cáo được hoàn thành và cập nhật giai đoạn V6 vào lúc 11:00:00 ngày 16/11/2026 bởi FlowOps Core Architecture Team.*
+
+
+---
+
+## 17. HOÀN THIỆN GIAO DIỆN CHUẨN TOBY FLOW, TỐI ƯU HÓA CANVAS 60+ FPS VÀ TÍCH HỢP TOÀN DIỆN LOCALSTACK & BACKEND
+
+### 17.1 Chuẩn Hóa Giao Diện Canvas 100% Khớp Ảnh Chụp Thực Tế
+- **Top Header Bar**:
+  - Logo biểu tượng ngôi sao 4 cánh neon lime, thương hiệu **Toby Flow**.
+  - Tên quy trình: **`Workflow - Korean Baseball Fan-Cam Sho`**.
+  - Trạng thái thời gian: **`• Nov 16`**.
+  - Công tắc chuyển đổi trạng thái: Neon lime active switch **`[ ON ]`**.
+  - Cụm điều khiển bên phải: Huy hiệu tài nguyên **`0 fl`** (amber pill), chỉ báo **`⚡ Max Speed AIR 👑`** (cyan pill), nút **`🔄 Reset`**, icon khóa **`🔒`**, và nút **`Save`** nổi bật màu trắng chữ đen đậm.
+- **Thanh Công Cụ Nổi Bên Trái (Left Floating Dock)**:
+  - Nút tròn lớn màu xanh neon (+) thêm Node nhanh.
+  - Bộ công cụ chuẩn: Pointer Selection, Pan/Hand, Ghi chú/Document, Thư viện Media/Image.
+  - Nút Play tròn màu xanh lá neon `▶` (kích hoạt luồng chạy).
+  - Cụm thao tác: Undo, Redo, Refresh/Fit, Search/Zoom, Grid Layout và Cài đặt bánh răng `⚙`.
+- **Thanh Điều Khiển Đáy (Bottom Floating Controls)**:
+  - Cụm góc trái: Mức thu phóng `🔍 42%`, các nút zoom in/out, Undo, Redo, Export.
+  - Cụm chính giữa đáy: Nút nổi **`[⛶] Recenter`** bo tròn tinh tế.
+
+### 17.2 Tối Ưu Hóa Canvas Tránh Giật Lag (60+ FPS Drag Performance)
+- **Loại bỏ CSS transitions khi tương tác**: Gỡ bỏ hoàn toàn `transition-colors duration-150` và transitions trên `.react-flow__node` và các thẻ card, giúp trình duyệt không phải tính toán chu kỳ chuyển màu trên mỗi pixel di chuyển chuột.
+- **Triệt tiêu xung đột GPU Layer**: Loại bỏ `will-change-transform` và nested `style={{ transform: 'translateZ(0)' }}` lồng bên trong node component con, ngăn chặn tình trạng Chromium thrashing các lớp composite 3D.
+- **Giảm tải Box Shadow**: Thay thế `shadow-2xl` (bán kính mờ 25px gây rasterization nặng) bằng đường viền 2px hardware-accelerated sắc nét (`border-[#ef4444]`, `border-[#22c55e]`, `border-[#0284c7]`).
+- **Tối ưu hàm Lưu trữ & Callback**: Chuyển đổi `saveToIndexedDb` sử dụng trực tiếp `reactFlowInstance.getNodes()` và `reactFlowInstance.getEdges()`, loại bỏ sự phụ thuộc `[nodes, edges]` khỏi dependency array. Nhờ đó `saveToIndexedDb`, `onNodeDragStop`, `onSelectionDragStop` hoàn toàn ổn định (stable references) và không bị tạo lại trên từng frame kéo node.
+- **Thiết lập React Flow Hiệu Năng Cao**: Cấu hình `nodeDragThreshold={1}`, `elevateNodesOnSelect={false}`, `onlyRenderVisibleElements={true}`, `snapToGrid={false}` cùng CSS `contain: layout style;` giúp cô lập hoàn toàn reflow của node khỏi canvas tổng thể.
+
+### 17.3 Hệ Thống Node Chuyên Biệt Theo Yêu Cầu
+1. **Node Prompt (`prompt`)**: Viền xanh neon (`border-[#22c55e]`), textarea hiển thị nội dung prompt đa thể thức, thanh đếm `Multimodal • Flow`, số từ, số ký tự, và cổng ra ký hiệu chữ `T`.
+2. **Node Ảnh (Image/Video 1 & 2 - `image`)**: Viền đỏ neon (`border-[#ef4444]`), tải ảnh/video hoặc hiển thị `SET UPLOAD FAILED`, nhãn tag `[Image_Video_1]` và `[Image_Video_2]`, cổng ra camera/image tròn xanh lá.
+3. **Node Muse Generator (`muse`)**: Thẻ tỷ lệ dọc chuẩn 9:16, viền đỏ neon, 3 cổng vào (Ảnh 1, Ảnh 2, Prompt), 2 cổng ra (Video Output & Image Asset Output), bộ đếm thời gian thực thi theo thời gian thực.
+4. **Node Ảnh Đầu Ra Muse (`imageOutput`)**: Nhận ảnh sinh ra từ Muse, hiển thị preview chất lượng cao, nút tải về file PNG và cổng tiếp vận `imageOut`.
+5. **Node Video Đầu Ra (`videoOutput`)**: Nhận video MP4 sinh ra từ Muse, nhúng trình phát video HTML5 hoàn chỉnh, nút tải về file MP4 1080p và cổng tiếp vận `videoOut`.
+
+### 17.4 Làm Sạch Toàn Bộ Dữ Liệu Mẫu (Clean Single-Workflow Studio)
+- Đã xóa sạch toàn bộ các mock workflow cũ (`wf-order-fulfillment-prod`, các workflow test `wf_mwis...`, v.v.) khỏi:
+  - `apps/web/src/lib/mockData.ts`
+  - `apps/api/src/server.ts` (`FALLBACK_WORKFLOWS`)
+  - Bảng DynamoDB `flowops-main` trên LocalStack
+- Giữ lại duy nhất 01 workflow dành riêng cho MUSE: **`Workflow - Korean Baseball Fan-Cam Sho`** (`workflow-korean-baseball-fancam`).
+
+### 17.5 Xử Lý Triệt Để Lỗi UNAVAILABLE & Cấu Hình Reverse Proxy
+- Khởi động đồng thời cả frontend Next.js (port 3000) và backend API (port 4000) cùng LocalStack (port 4566).
+- Cấu hình `rewrites` trong `apps/web/next.config.ts`: Chuyển tiếp toàn bộ các yêu cầu `/api/v1/:path*` sang backend `http://127.0.0.1:4000/api/v1/:path*` ở tầng Next.js engine, giải quyết triệt để lỗi 404 và gateway timeout.
+- Xác nhận kiểm thử `/api/v1/health/ready`: Trả về `200 OK` với tất cả dịch vụ `localstack`, `dynamodb`, `s3`, `stepfunctions` đều đạt trạng thái `healthy`.
+- Bộ kiểm thử toàn diện: **Toàn bộ 40/40 tests trên 7 test suites đều đạt 100% PASS** (Bao gồm cả 9/9 tests trên LocalStack thực tế).

@@ -4,6 +4,7 @@ import {
   ASLStateMachine,
   ASLState,
   ASLTaskState,
+  ASLPassState,
   ASLChoiceState,
   ASLWaitState,
   ASLSucceedState,
@@ -18,10 +19,20 @@ export interface ASLCompilationOptions {
   timeoutSeconds?: number;
 }
 
-const DEFAULT_HTTP_EXECUTOR_ARN =
-  'arn:aws:lambda:ap-southeast-1:123456789012:function:flowops-http-executor';
-const DEFAULT_APPROVAL_DISPATCHER_ARN =
-  'arn:aws:lambda:ap-southeast-1:123456789012:function:flowops-approval-dispatcher';
+const getAccountId = () =>
+  process.env.AWS_ACCOUNT_ID ||
+  (process.env.EXECUTION_PROVIDER === 'aws' ? '123456789012' : '000000000000');
+
+const getRegion = () =>
+  process.env.LOCALSTACK_REGION || process.env.AWS_REGION || 'ap-southeast-1';
+
+export const getDefaultHttpExecutorArn = () =>
+  process.env.HTTP_EXECUTOR_LAMBDA_ARN ||
+  `arn:aws:lambda:${getRegion()}:${getAccountId()}:function:flowops-http-executor`;
+
+export const getDefaultApprovalDispatcherArn = () =>
+  process.env.APPROVAL_DISPATCHER_LAMBDA_ARN ||
+  `arn:aws:lambda:${getRegion()}:${getAccountId()}:function:flowops-approval-dispatcher`;
 
 /**
  * Compiles a canonical IRGraph into a valid Amazon States Language (ASL) State Machine JSON definition.
@@ -31,9 +42,9 @@ export function generateASL(
   options: ASLCompilationOptions = {}
 ): ASLStateMachine {
   const states: Record<string, ASLState> = {};
-  const httpLambdaArn = options.defaultHttpLambdaArn || DEFAULT_HTTP_EXECUTOR_ARN;
+  const httpLambdaArn = options.defaultHttpLambdaArn || getDefaultHttpExecutorArn();
   const approvalLambdaArn =
-    options.approvalDispatcherLambdaArn || DEFAULT_APPROVAL_DISPATCHER_ARN;
+    options.approvalDispatcherLambdaArn || getDefaultApprovalDispatcherArn();
 
   for (const [canonicalId, irNode] of ir.nodes.entries()) {
     states[canonicalId] = mapIRNodeToASLState(irNode, {
@@ -59,25 +70,16 @@ function mapIRNodeToASLState(
     case 'TRIGGER_MANUAL':
     case 'TRIGGER_WEBHOOK': {
       // Triggers compile to a Pass state in Step Functions that forwards or initializes payload
-      const passState: ASLState = {
-        Type: 'Task',
-        Resource: 'arn:aws:states:::lambda:invoke',
-        Parameters: {
-          FunctionName: config.httpLambdaArn,
-          Payload: {
-            'executionId.$': '$$.Execution.Id',
-            'initiatedBy.$': '$$.Execution.Input.initiatedBy',
-            event: irNode.parameters,
-          },
-        },
+      const passState: ASLPassState = {
+        Type: 'Pass',
         ResultPath: '$.triggerOutput',
         Comment: `Trigger: ${irNode.label}`,
-      } as ASLTaskState;
+      };
 
       if (irNode.next) {
-        (passState as ASLTaskState).Next = irNode.next;
+        passState.Next = irNode.next;
       } else {
-        (passState as ASLTaskState).End = true;
+        passState.End = true;
       }
       return passState;
     }

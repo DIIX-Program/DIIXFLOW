@@ -131,21 +131,6 @@ const FALLBACK_WORKFLOWS: WorkflowItem[] = [
     updatedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   },
-  {
-    id: 'wf-order-fulfillment-prod',
-    name: 'Order Fulfillment & Risk Gate',
-    description: 'Validates charges, checks fraud thresholds, and requests manager signoff.',
-    status: 'PUBLISHED',
-    currentVersion: 3,
-    triggerType: 'WEBHOOK',
-    nodeCount: 6,
-    edgeCount: 5,
-    executionCount: 142,
-    successRate: 99.4,
-    lastExecutedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-  },
 ];
 
 async function parseJsonBody<T = any>(req: http.IncomingMessage): Promise<T> {

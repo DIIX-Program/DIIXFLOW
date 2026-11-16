@@ -238,13 +238,33 @@ body {
   background-color: var(--card-2);
 }
 
-/* React Flow Custom Theme Overrides */
+/* React Flow High Performance Dragging & Rendering Overrides */
 .react-flow__attribution {
   display: none !important;
 }
 
+.react-flow__pane {
+  cursor: grab;
+}
+.react-flow__pane:active {
+  cursor: grabbing;
+}
+
 .react-flow__node {
-  border-radius: 14px;
+  border-radius: 16px;
+  will-change: transform;
+  contain: layout style;
+}
+
+.react-flow__node.dragging,
+.react-flow__node.dragging * {
+  transition: none !important;
+  user-select: none !important;
+}
+
+.react-flow__edge-path {
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
 }
   ::view-transition-old(root), ::view-transition-new(root) {
     animation: none;
