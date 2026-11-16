@@ -124,16 +124,16 @@ export default function MarketingLandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <Link href="/signup">
+            <Link href="/workflows/workflow-korean-baseball-fancam/editor">
               <ShimmerButton
                 shimmerColor="#ffffff"
                 shimmerDuration="3s"
                 borderRadius="14px"
-                background="var(--accent)"
-                className="h-12 px-7 text-[14px] font-bold text-white shadow-md flex items-center gap-2"
+                background="#10b981"
+                className="h-12 px-7 text-[14px] font-bold text-black shadow-md flex items-center gap-2 bg-[#a3e635]"
               >
-                <span>Start for Free</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Open Muse AI Studio</span>
+                <ArrowRight className="w-4 h-4 text-black" />
               </ShimmerButton>
             </Link>
 
@@ -141,7 +141,7 @@ export default function MarketingLandingPage() {
               href="/workflows"
               className="h-12 px-6 rounded-2xl bg-[var(--card)] hover:bg-[var(--card-2)] border border-[var(--line-strong)] text-[13.5px] font-bold text-[var(--ink)] flex items-center gap-2 shadow-sm transition-all"
             >
-              <span>Explore Dashboard</span>
+              <span>Explore Workflows</span>
               <ArrowUpRight className="w-4 h-4 text-[var(--muted)]" />
             </Link>
           </div>

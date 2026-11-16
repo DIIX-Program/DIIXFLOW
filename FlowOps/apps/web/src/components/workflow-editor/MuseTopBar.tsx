@@ -1,21 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import {
-  Play,
-  Square,
-  Undo2,
-  Redo2,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
+  Sparkles,
+  RotateCcw,
+  Lock,
+  Unlock,
+  Zap,
   Puzzle,
   CheckCircle2,
   AlertTriangle,
-  RotateCcw,
-  Sparkles,
-  Settings,
-  ShieldCheck,
+  Play,
+  Square,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -25,13 +21,8 @@ interface MuseTopBarProps {
   isRunning: boolean;
   onRun: () => void;
   onStop: () => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
-  onZoomIn?: () => void;
-  onZoomOut?: () => void;
-  onFitView?: () => void;
+  onReset: () => void;
+  onSave: () => void;
   extensionStatus: {
     connected: boolean;
     museTabFound: boolean;
@@ -42,19 +33,14 @@ interface MuseTopBarProps {
   onOpenExtensionModal: () => void;
 }
 
-export function MuseTopBar({
+export const MuseTopBar = memo(function MuseTopBar({
   workflowName,
   onUpdateName,
   isRunning,
   onRun,
   onStop,
-  onUndo,
-  onRedo,
-  canUndo,
-  canRedo,
-  onZoomIn,
-  onZoomOut,
-  onFitView,
+  onReset,
+  onSave,
   extensionStatus,
   mockMode,
   onToggleMockMode,
@@ -62,6 +48,8 @@ export function MuseTopBar({
 }: MuseTopBarProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(workflowName);
+  const [isLocked, setIsLocked] = useState(false);
+  const [isFlowActive, setIsFlowActive] = useState(true);
 
   const handleNameBlur = () => {
     setIsEditingName(false);
@@ -73,21 +61,15 @@ export function MuseTopBar({
   };
 
   return (
-    <header className="h-13 bg-[#121415] border-b border-[#232628] px-4 flex items-center justify-between text-stone-200 select-none">
-      {/* Left: Brand & Workflow Title */}
+    <header className="h-14 bg-[#0a0b0d] border-b border-[#1c1f24] px-4 flex items-center justify-between text-stone-200 select-none z-30">
+      {/* Left: Brand / Title / Active Switch */}
       <div className="flex items-center gap-3">
-        <Link href="/dashboard" className="flex items-center gap-2 group">
-          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <span className="text-xs font-bold tracking-wider uppercase text-stone-100 group-hover:text-emerald-400 transition-colors">
-            Muse Studio
-          </span>
-        </Link>
+        {/* Neon Green Brand Icon */}
+        <div className="w-6 h-6 rounded-full bg-[#a3e635] text-black flex items-center justify-center font-black text-sm shadow-[0_0_12px_rgba(163,230,53,0.5)] cursor-pointer">
+          ✦
+        </div>
 
-        <span className="text-stone-600">/</span>
-
-        {/* Editable Title */}
+        {/* Workflow Title */}
         {isEditingName ? (
           <input
             type="text"
@@ -96,117 +78,98 @@ export function MuseTopBar({
             onBlur={handleNameBlur}
             onKeyDown={(e) => e.key === 'Enter' && handleNameBlur()}
             autoFocus
-            className="bg-[#1a1d1e] border border-stone-600 rounded px-2 py-0.5 text-xs text-stone-100 focus:outline-none"
+            className="bg-[#141619] border border-stone-600 rounded px-2.5 py-0.5 text-xs font-semibold text-stone-100 focus:outline-none"
           />
         ) : (
-          <h2
+          <h1
             onClick={() => setIsEditingName(true)}
-            className="text-xs font-semibold text-stone-300 hover:text-stone-100 cursor-pointer px-1 py-0.5 rounded hover:bg-[#1a1d1e] transition-colors"
+            className="text-xs font-semibold text-stone-100 hover:text-stone-300 cursor-pointer flex items-center gap-2"
+            title="Click to edit workflow name"
           >
             {workflowName}
-          </h2>
+          </h1>
         )}
 
-        <span className="text-[10px] text-stone-500 font-mono hidden sm:inline">
-          (Saved in IndexedDB)
+        {/* Date Indicator */}
+        <span className="text-[11px] text-stone-400 flex items-center gap-1.5 font-mono">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+          Nov 16
         </span>
-      </div>
 
-      {/* Middle: Canvas Controls */}
-      <div className="flex items-center gap-1.5 bg-[#181a1b] border border-[#26292b] rounded-lg px-2 py-1">
+        {/* Neon Green Switch Toggle */}
         <button
-          onClick={onUndo}
-          disabled={!canUndo}
-          className="p-1 text-stone-400 hover:text-stone-200 disabled:opacity-40 disabled:hover:text-stone-400 rounded transition-colors"
-          title="Undo (Ctrl+Z)"
+          onClick={() => setIsFlowActive(!isFlowActive)}
+          className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
+            isFlowActive ? 'bg-[#a3e635] justify-end shadow-[0_0_8px_rgba(163,230,53,0.4)]' : 'bg-stone-700 justify-start'
+          }`}
+          title="Toggle Workflow Active"
         >
-          <Undo2 className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={onRedo}
-          disabled={!canRedo}
-          className="p-1 text-stone-400 hover:text-stone-200 disabled:opacity-40 disabled:hover:text-stone-400 rounded transition-colors"
-          title="Redo (Ctrl+Y)"
-        >
-          <Redo2 className="w-3.5 h-3.5" />
-        </button>
-        <div className="w-px h-3 bg-stone-700 mx-0.5" />
-        <button
-          onClick={onZoomIn}
-          className="p-1 text-stone-400 hover:text-stone-200 rounded transition-colors"
-          title="Zoom In"
-        >
-          <ZoomIn className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={onZoomOut}
-          className="p-1 text-stone-400 hover:text-stone-200 rounded transition-colors"
-          title="Zoom Out"
-        >
-          <ZoomOut className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={onFitView}
-          className="p-1 text-stone-400 hover:text-stone-200 rounded transition-colors"
-          title="Fit View"
-        >
-          <Maximize2 className="w-3.5 h-3.5" />
+          <div className="w-4 h-4 rounded-full bg-black shadow-sm" />
         </button>
       </div>
 
-      {/* Right: Extension Pill, Mock Mode Toggle & Run Button */}
+      {/* Right: Credits, Max Speed AI, Reset, Save, Lock, Extension Modal */}
       <div className="flex items-center gap-2.5">
-        {/* Mock Mode Toggle */}
-        <label className="hidden md:flex items-center gap-1.5 cursor-pointer text-[11px] text-stone-400 hover:text-stone-200">
-          <input
-            type="checkbox"
-            checked={mockMode}
-            onChange={(e) => onToggleMockMode(e.target.checked)}
-            className="rounded accent-emerald-500"
-          />
-          <span className="font-mono text-[10px]">Mock Mode</span>
-        </label>
+        {/* Amber Credit Badge: 0 fl */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-[11px]">
+          <Zap className="w-3.5 h-3.5 text-amber-400" />
+          <span>0 fl</span>
+        </div>
 
-        {/* Extension Status Pill */}
+        {/* Max Speed AI */}
+        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#14161a] border border-[#252a33] text-stone-200 text-xs font-semibold hover:border-stone-500 transition-colors shadow-sm">
+          <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+          <span>Max Speed</span>
+          <span className="px-1 py-0.2 rounded bg-sky-500/20 text-sky-400 text-[10px] font-mono">AI</span>
+          <span className="text-amber-400 text-xs">👑</span>
+        </button>
+
+        {/* Reset Button */}
+        <button
+          onClick={onReset}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#14161a] border border-[#252a33] text-stone-300 text-xs font-semibold hover:border-stone-500 transition-colors shadow-sm"
+          title="Reset canvas"
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-stone-400" />
+          <span>Reset</span>
+        </button>
+
+        {/* Save Button (White Solid Pill) */}
+        <button
+          onClick={onSave}
+          className="px-4 py-1.5 rounded-xl bg-stone-100 hover:bg-white text-black text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+        >
+          Save
+        </button>
+
+        {/* Lock Toggle */}
+        <button
+          onClick={() => setIsLocked(!isLocked)}
+          className={`w-8 h-8 rounded-xl border flex items-center justify-center text-xs transition-colors ${
+            isLocked ? 'bg-amber-500/15 border-amber-500/40 text-amber-400' : 'bg-[#14161a] border-[#252a33] text-stone-400 hover:text-stone-200'
+          }`}
+          title={isLocked ? 'Canvas locked' : 'Canvas unlocked'}
+        >
+          {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+        </button>
+
+        {/* Extension Bridge Pill */}
         <button
           onClick={onOpenExtensionModal}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-mono transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-mono transition-colors ${
             mockMode
-              ? 'bg-purple-500/10 border-purple-500/30 text-purple-300'
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
               : extensionStatus.connected
               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+              : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-stone-200'
           }`}
         >
           <Puzzle className="w-3 h-3" />
-          <span className="text-[11px]">
-            {mockMode
-              ? 'Mock Bridge'
-              : extensionStatus.connected
-              ? 'Extension Active'
-              : 'Extension Setup'}
+          <span className="hidden sm:inline">
+            {mockMode ? 'Mock' : extensionStatus.connected ? 'Extension OK' : 'Connect Ext'}
           </span>
         </button>
-
-        {/* Run / Stop Button */}
-        {isRunning ? (
-          <button
-            onClick={onStop}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold shadow-lg shadow-red-900/30 transition-all"
-          >
-            <Square className="w-3.5 h-3.5 fill-current" />
-            <span>Stop Workflow</span>
-          </button>
-        ) : (
-          <button
-            onClick={onRun}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-900/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Run Workflow</span>
-          </button>
-        )}
       </div>
     </header>
   );
-}
+});

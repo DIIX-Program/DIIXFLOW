@@ -1,11 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useEffect, useRef, use } from 'react';
-import Link from 'next/link';
 import {
   ReactFlow,
-  Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
   addEdge,
@@ -14,105 +11,110 @@ import {
   Edge,
   Node,
   ReactFlowProvider,
+  Background,
+  OnNodesChange,
+  OnEdgesChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { nodeTypes } from '@/components/workflow-editor/nodes/CustomNodes';
-import { MuseNodePalette } from '@/components/workflow-editor/MuseNodePalette';
-import { MuseInspector } from '@/components/workflow-editor/MuseInspector';
 import { MuseTopBar } from '@/components/workflow-editor/MuseTopBar';
+import { LeftFloatingDock } from '@/components/workflow-editor/LeftFloatingDock';
+import { BottomFloatingControls } from '@/components/workflow-editor/BottomFloatingControls';
+import { QuickNodeModal } from '@/components/workflow-editor/QuickNodeModal';
+import { MuseInspector } from '@/components/workflow-editor/MuseInspector';
 import { MuseExecutionPanel } from '@/components/workflow-editor/MuseExecutionPanel';
 import { ExtensionSetupModal } from '@/components/workflow-editor/ExtensionSetupModal';
-import { DotPattern } from '@/components/ui/dot-pattern';
-import {
-  BlurGlideContextMenu,
-  MenuPanel,
-} from '@/components/microkit/blur-glide-menu';
-import {
-  Image as ImageIcon,
-  FileText,
-  Sparkles,
-  Download,
-  Video,
-  User,
-  MapPin,
-  Package,
-} from 'lucide-react';
+
 import { db, storeAsset, getAssetBlob } from '@/lib/storage/db';
 import { extensionBridge, BridgeStatus } from '@/lib/bridge/extensionBridge';
 import { arrayBufferToBase64 } from '@/lib/bridge/chunkTransfer';
 import { MuseWorkflowEngine } from '@flowops/workflow-core';
 import { MuseJobPayload } from '@flowops/contracts';
 
-// Default Muse AI Studio Starter Nodes
+// Default Muse AI Studio Setup — Matches User's Screenshot 100%
+const defaultPromptText = `# TWO-IMAGE CHARACTER OUTFIT TRANSFER
+
+Use the TWO uploaded reference images with clearly separated roles:
+
+#1 REFERENCE IMAGE 1 - CHARACTER IDENTITY
+This image defines the character's identity
+
+#2 REFERENCE IMAGE 2 - TARGET OUTFIT
+This image defines the target outfit and style`;
+
 const initialMuseNodes: Node[] = [
   {
     id: 'node-image-1',
     type: 'image',
-    position: { x: 80, y: 140 },
-    data: { label: 'Character Reference', items: [] },
+    position: { x: 300, y: 130 },
+    data: { label: 'Image/Video', tag: '[Image_Video_1]', items: [] },
+  },
+  {
+    id: 'node-image-2',
+    type: 'image',
+    position: { x: 300, y: 400 },
+    data: { label: 'Image/Video 2', tag: '[Image_Video_2]', items: [] },
   },
   {
     id: 'node-prompt-1',
     type: 'prompt',
-    position: { x: 80, y: 380 },
+    position: { x: 260, y: 670 },
     data: {
-      label: 'Creative Prompt',
-      rawText: 'Cinematic portrait of a cyberpunk explorer, intricate glowing circuitry, volumetric rain, photorealistic 8k octane render',
+      label: 'Prompt',
+      rawText: defaultPromptText,
+      text: defaultPromptText,
     },
   },
   {
     id: 'node-muse-1',
     type: 'muse',
-    position: { x: 480, y: 220 },
+    position: { x: 800, y: 220 },
     data: {
-      label: 'Muse Image Generator',
-      mode: 'image',
+      label: '1.0 - Muse - Image/Video Generator 1',
+      mode: 'video',
       status: 'Idle',
       phase: 'Idle',
-      timeoutSeconds: 120,
-    },
-  },
-  {
-    id: 'node-output-1',
-    type: 'output',
-    position: { x: 880, y: 220 },
-    data: {
-      label: 'Generated Masterpiece',
-      media: null,
-      autoDownload: false,
+      timeoutSeconds: 180,
     },
   },
 ];
 
 const initialMuseEdges: Edge[] = [
-  { id: 'e-img-muse', source: 'node-image-1', target: 'node-muse-1', targetHandle: 'imagesIn' },
-  { id: 'e-prompt-muse', source: 'node-prompt-1', target: 'node-muse-1', targetHandle: 'promptIn' },
-  { id: 'e-muse-out', source: 'node-muse-1', target: 'node-output-1', targetHandle: 'mediaIn' },
+  {
+    id: 'e-img1-muse',
+    source: 'node-image-1',
+    sourceHandle: 'imageOut',
+    target: 'node-muse-1',
+    targetHandle: 'imageIn1',
+    style: { stroke: '#475569', strokeWidth: 2 },
+  },
+  {
+    id: 'e-img2-muse',
+    source: 'node-image-2',
+    sourceHandle: 'imageOut',
+    target: 'node-muse-1',
+    targetHandle: 'imageIn2',
+    style: { stroke: '#475569', strokeWidth: 2 },
+  },
+  {
+    id: 'e-prompt-muse',
+    source: 'node-prompt-1',
+    sourceHandle: 'promptOut',
+    target: 'node-muse-1',
+    targetHandle: 'promptIn',
+    style: { stroke: '#64748b', strokeWidth: 2 },
+  },
 ];
-
-const canvasContextMenuPanel: MenuPanel = {
-  rows: [
-    { id: 'add-image', label: 'Add Image Node', icon: ImageIcon, hint: 'I' },
-    { id: 'add-prompt', label: 'Add Prompt Node', icon: FileText, hint: 'P' },
-    { id: 'add-muse-image', label: 'Add Muse Image Generator', icon: Sparkles, hint: 'M' },
-    { id: 'add-muse-video', label: 'Add Muse Video Generator', icon: Video, hint: 'V' },
-    { id: 'add-character', label: 'Add Character Reference', icon: User, hint: 'C' },
-    { id: 'add-scene', label: 'Add Scene Reference', icon: MapPin, hint: 'S' },
-    { id: 'add-product', label: 'Add Product Reference', icon: Package, hint: 'D' },
-    { id: 'add-output', label: 'Add Media Output Node', icon: Download, hint: 'O' },
-  ],
-};
 
 function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialMuseNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialMuseEdges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [workflowName, setWorkflowName] = useState('Muse Character Generation');
+  const [workflowName, setWorkflowName] = useState('Workflow - Korean Baseball Fan-Cam Sho');
 
   const reactFlowInstance = useReactFlow();
   const engineRef = useRef<MuseWorkflowEngine | null>(null);
-  const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Execution states
   const [isRunning, setIsRunning] = useState(false);
@@ -123,24 +125,19 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [executionLogs, setExecutionLogs] = useState<Array<{ timestamp: number; level: any; message: string }>>([]);
 
-  // Extension status & Mock Mode
+  // Modals & Panels
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
+  const [showInspector, setShowInspector] = useState(false);
+  const [mockMode, setMockMode] = useState(false);
+
+  // Zoom Tracking
+  const [zoomPercent, setZoomPercent] = useState(42);
+
   const [extensionStatus, setExtensionStatus] = useState<BridgeStatus>({
     connected: false,
     extensionInstalled: false,
     museTabFound: false,
-  });
-  const [mockMode, setMockMode] = useState(false);
-  const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
-
-  // Context Menu State
-  const [contextMenu, setContextMenu] = useState<{
-    isOpen: boolean;
-    x: number;
-    y: number;
-  }>({
-    isOpen: false,
-    x: 0,
-    y: 0,
   });
 
   // 1. Initial Load from Local-First IndexedDB
@@ -150,14 +147,13 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
       if (mounted && saved && saved.nodes && saved.nodes.length > 0) {
         setNodes(saved.nodes);
         setEdges(saved.edges || []);
-        setWorkflowName(saved.name || 'Muse Workflow');
+        if (saved.name) setWorkflowName(saved.name);
         if (saved.viewport) {
           reactFlowInstance.setViewport(saved.viewport);
         }
       }
     });
 
-    // Probe Chrome extension connection
     extensionBridge.checkStatus().then((status) => {
       if (mounted) setExtensionStatus(status);
     });
@@ -165,44 +161,48 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
     return () => {
       mounted = false;
     };
-  }, [workflowId, reactFlowInstance]);
+  }, [workflowId, reactFlowInstance, setNodes, setEdges]);
 
-  // 2. Debounced Autosave to IndexedDB
-  const triggerAutosave = useCallback(() => {
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(async () => {
-      try {
-        const viewport = reactFlowInstance.getViewport();
-        await db.workflows.put({
-          id: workflowId,
-          name: workflowName,
-          schemaVersion: 1,
-          nodes,
-          edges,
-          viewport,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        });
-      } catch {}
-    }, 600);
+  // 2. High-Performance Autosave: ONLY saves to IndexedDB on Drag Stop or Explicit Save (NO LAG DURING DRAG)
+  const saveToIndexedDb = useCallback(async () => {
+    try {
+      const viewport = reactFlowInstance.getViewport();
+      await db.workflows.put({
+        id: workflowId,
+        name: workflowName,
+        schemaVersion: 1,
+        nodes,
+        edges,
+        viewport,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    } catch {}
   }, [workflowId, workflowName, nodes, edges, reactFlowInstance]);
 
-  useEffect(() => {
-    triggerAutosave();
-  }, [nodes, edges, workflowName, triggerAutosave]);
+  const onNodeDragStop = useCallback(() => {
+    saveToIndexedDb();
+  }, [saveToIndexedDb]);
 
-  // Handle Mock Mode Toggle
-  const handleToggleMockMode = (enabled: boolean) => {
-    setMockMode(enabled);
-    extensionBridge.setMockMode(enabled);
-  };
+  const onSelectionDragStop = useCallback(() => {
+    saveToIndexedDb();
+  }, [saveToIndexedDb]);
 
   // Edge Connection Handler
   const onConnect = useCallback(
     (params: Connection) => {
-      setEdges((eds) => addEdge({ ...params, animated: true }, eds));
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...params,
+            style: { stroke: '#64748b', strokeWidth: 2 },
+          },
+          eds
+        )
+      );
+      saveToIndexedDb();
     },
-    [setEdges]
+    [setEdges, saveToIndexedDb]
   );
 
   // Selection Handler
@@ -212,195 +212,131 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
 
   const onPaneClick = useCallback(() => {
     setSelectedNodeId(null);
-    setContextMenu((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
-  // Context Menu
-  const onPaneContextMenu = useCallback((event: MouseEvent | React.MouseEvent) => {
-    event.preventDefault();
-    setContextMenu({
-      isOpen: true,
-      x: event.clientX,
-      y: event.clientY,
-    });
-  }, []);
+  // Recenter / Fit View
+  const handleRecenter = useCallback(() => {
+    reactFlowInstance.fitView({ padding: 0.25, duration: 300 });
+  }, [reactFlowInstance]);
 
-  // Add Node Helper
+  // Zoom handlers
+  const handleZoomIn = useCallback(() => {
+    reactFlowInstance.zoomIn({ duration: 200 });
+  }, [reactFlowInstance]);
+
+  const handleZoomOut = useCallback(() => {
+    reactFlowInstance.zoomOut({ duration: 200 });
+  }, [reactFlowInstance]);
+
+  // Update zoom percentage on viewport change
+  const onMoveEnd = useCallback(() => {
+    const zoom = reactFlowInstance.getZoom();
+    setZoomPercent(Math.round(zoom * 100));
+  }, [reactFlowInstance]);
+
+  // Reset Canvas to Default Layout
+  const handleResetCanvas = useCallback(() => {
+    setNodes(initialMuseNodes);
+    setEdges(initialMuseEdges);
+    setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.25, duration: 300 });
+    }, 50);
+  }, [reactFlowInstance, setNodes, setEdges]);
+
+  // Add Node from Modal
   const handleAddNode = useCallback(
     (type: string, defaultData: Record<string, any>) => {
       const newId = `node-${type}-${Date.now().toString().slice(-4)}`;
-      const position = reactFlowInstance.screenToFlowPosition({
-        x: window.innerWidth / 2 - 100,
-        y: window.innerHeight / 2 - 80,
+      const center = reactFlowInstance.screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
       });
 
       const newNode: Node = {
         id: newId,
         type,
-        position,
+        position: { x: center.x - 120, y: center.y - 100 },
         data: { ...defaultData },
       };
 
       setNodes((nds) => [...nds, newNode]);
       setSelectedNodeId(newId);
+      setTimeout(saveToIndexedDb, 100);
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, saveToIndexedDb]
   );
 
-  const handleContextMenuAction = (actionId: string) => {
-    setContextMenu((prev) => ({ ...prev, isOpen: false }));
-    switch (actionId) {
-      case 'add-image':
-        handleAddNode('image', { label: 'Reference Image', items: [] });
-        break;
-      case 'add-prompt':
-        handleAddNode('prompt', { label: 'Prompt', rawText: '' });
-        break;
-      case 'add-muse-image':
-        handleAddNode('muse', { label: 'Muse Image Generator', mode: 'image', timeoutSeconds: 120 });
-        break;
-      case 'add-muse-video':
-        handleAddNode('muse', { label: 'Muse Video Generator', mode: 'video', timeoutSeconds: 240 });
-        break;
-      case 'add-character':
-        handleAddNode('character', { characterName: 'Character', description: 'Hero character profile' });
-        break;
-      case 'add-scene':
-        handleAddNode('scene', { sceneName: 'Scene', location: 'Cyberpunk cityscape' });
-        break;
-      case 'add-product':
-        handleAddNode('product', { productName: 'Product', description: 'Commercial product showcase' });
-        break;
-      case 'add-output':
-        handleAddNode('output', { label: 'Media Output', autoDownload: false });
-        break;
-    }
-  };
-
-  // Drag and Drop from Node Palette
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+  // Mock Mode Toggle
+  const handleToggleMockMode = useCallback((enabled: boolean) => {
+    setMockMode(enabled);
+    extensionBridge.setMockMode(enabled);
   }, []);
 
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      const type = event.dataTransfer.getData('application/reactflow/type');
-      const dataStr = event.dataTransfer.getData('application/reactflow/data');
-      if (!type) return;
+  // Execution: Run Workflow with MuseWorkflowEngine
+  const handleRunWorkflow = useCallback(async () => {
+    if (isRunning) return;
 
-      const position = reactFlowInstance.screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
-
-      let defaultData = {};
-      try {
-        if (dataStr) defaultData = JSON.parse(dataStr);
-      } catch {}
-
-      const newId = `node-${type}-${Date.now().toString().slice(-4)}`;
-      const newNode: Node = {
-        id: newId,
-        type,
-        position,
-        data: { ...defaultData },
-      };
-
-      setNodes((nds) => [...nds, newNode]);
-      setSelectedNodeId(newId);
-    },
-    [reactFlowInstance, setNodes]
-  );
-
-  // Update Node Data from Inspector
-  const handleUpdateNodeData = (nodeId: string, updates: Record<string, any>) => {
-    setNodes((nds) =>
-      nds.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, ...updates } } : n))
-    );
-  };
-
-  const handleDeleteNode = (nodeId: string) => {
-    setNodes((nds) => nds.filter((n) => n.id !== nodeId));
-    setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
-    if (selectedNodeId === nodeId) setSelectedNodeId(null);
-  };
-
-  const handleDuplicateNode = (nodeId: string) => {
-    const original = nodes.find((n) => n.id === nodeId);
-    if (!original) return;
-    const newId = `node-${original.type}-${Date.now().toString().slice(-4)}`;
-    const clone: Node = {
-      ...original,
-      id: newId,
-      position: { x: original.position.x + 40, y: original.position.y + 40 },
-      data: { ...original.data, label: `${original.data.label || original.type} (Copy)` },
-      selected: false,
-    };
-    setNodes((nds) => [...nds, clone]);
-    setSelectedNodeId(newId);
-  };
-
-  // Run Workflow via MuseWorkflowEngine
-  const handleRunWorkflow = async () => {
     setIsRunning(true);
     setRunStatus('Running');
     setElapsedSeconds(0);
     setExecutionLogs([
-      { timestamp: Date.now(), level: 'info', message: 'Starting Muse AI workflow execution...' },
+      { timestamp: Date.now(), level: 'info', message: 'Starting Muse Studio workflow execution...' },
     ]);
 
     const timer = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
+      setElapsedSeconds((s) => s + 1);
     }, 1000);
 
     const engine = new MuseWorkflowEngine({
-      onNodeStatusChange: (nodeId, status, phase, details) => {
+      onNodeStatusChange: (nodeId: string, status: any, phase?: any, details?: string) => {
         setActiveNodeId(nodeId);
-        setActivePhase(phase || null);
-        setPhaseDetails(details);
-
-        setNodes((nds) =>
-          nds.map((n) =>
-            n.id === nodeId
-              ? {
-                  ...n,
-                  data: {
-                    ...n.data,
-                    status,
-                    phase,
-                    phaseDetails: details,
-                    elapsedSeconds,
-                  },
-                }
-              : n
-          )
-        );
-
+        if (phase) {
+          setActivePhase(phase);
+          setPhaseDetails(details);
+        }
         setExecutionLogs((prev) => [
           ...prev,
           {
             timestamp: Date.now(),
-            level: status === 'Failed' ? 'error' : status === 'Succeeded' ? 'success' : 'info',
-            message: `[${nodeId}] ${status} ${phase ? `— ${phase}` : ''} ${details ? `(${details})` : ''}`,
+            level: status === 'Failed' ? 'error' : 'info',
+            message: `[${nodeId}] -> ${status}${phase ? ` (${phase})` : ''}`,
           },
         ]);
+        setNodes((nds) =>
+          nds.map((n) =>
+            n.id === nodeId
+              ? { ...n, data: { ...n.data, status, phase: phase || n.data.phase, phaseDetails: details } }
+              : n
+          )
+        );
       },
 
-      onNodeOutput: (nodeId, output) => {
-        if (output.kind === 'MediaAsset' || output.media) {
-          const mediaObj = output.media || output;
-          setNodes((nds) =>
-            nds.map((n) =>
-              n.id === nodeId ? { ...n, data: { ...n.data, media: mediaObj } } : n
-            )
-          );
-        }
+      onNodeOutput: (nodeId: string, output: any) => {
+        setExecutionLogs((prev) => [
+          ...prev,
+          { timestamp: Date.now(), level: 'success', message: `Step completed: [${nodeId}]` },
+        ]);
+        setNodes((nds) =>
+          nds.map((n) => {
+            if (n.id === nodeId) {
+              const resUrl = output?.blob ? URL.createObjectURL(output.blob) : n.data.resultUrl;
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  status: 'Completed',
+                  phase: 'Completed',
+                  resultUrl: resUrl,
+                  output,
+                },
+              };
+            }
+            return n;
+          })
+        );
       },
 
       executeMuseJob: async (context) => {
-        // Collect reference images into Base64 format
         const referenceBlobs: Array<{ fileName: string; mimeType: string; dataBase64: string }> = [];
         const incomingImgs = context.inputs.images || [];
 
@@ -429,9 +365,9 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
           jobId: `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           runId: context.runId,
           nodeId: context.nodeId,
-          prompt: context.inputs.prompt || 'Cyberpunk digital painting',
-          mode: context.config.mode || 'image',
-          aspectRatioHint: context.config.aspectRatioHint,
+          prompt: context.inputs.prompt || defaultPromptText,
+          mode: context.config.mode || 'video',
+          aspectRatioHint: '9:16',
           timeoutSeconds: context.config.timeoutSeconds || 180,
           referenceImageBlobs: referenceBlobs,
         };
@@ -440,8 +376,7 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
           context.onPhaseUpdate(phase, details, pct);
         });
 
-        // Store result in IndexedDB
-        const stored = await storeAsset(
+        await storeAsset(
           result.blob,
           `muse_${context.nodeId}_${Date.now()}.${result.mediaType === 'video' ? 'mp4' : 'png'}`,
           'muse_output'
@@ -463,7 +398,7 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
       setRunStatus('Succeeded');
       setExecutionLogs((prev) => [
         ...prev,
-        { timestamp: Date.now(), level: 'success', message: 'All workflow steps finished successfully!' },
+        { timestamp: Date.now(), level: 'success', message: 'Workflow finished successfully!' },
       ]);
     } catch (err: any) {
       setRunStatus('Failed');
@@ -475,19 +410,15 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
       clearInterval(timer);
       setIsRunning(false);
     }
-  };
+  }, [isRunning, nodes, edges, setNodes]);
 
-  const handleStopWorkflow = () => {
+  const handleStopWorkflow = useCallback(() => {
     if (engineRef.current) {
       engineRef.current.cancel();
     }
     setIsRunning(false);
     setRunStatus('Cancelled');
-    setExecutionLogs((prev) => [
-      ...prev,
-      { timestamp: Date.now(), level: 'warn', message: 'Workflow cancelled by user.' },
-    ]);
-  };
+  }, []);
 
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selectedNodeId) || null,
@@ -495,97 +426,112 @@ function MuseWorkflowEditorContent({ workflowId }: { workflowId: string }) {
   );
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#0d0f10] overflow-hidden">
-      {/* Top Bar */}
+    <div className="flex flex-col h-screen w-screen bg-[#08090b] overflow-hidden select-none">
+      {/* 1. Sleek Top Bar (Matches Screenshot) */}
       <MuseTopBar
         workflowName={workflowName}
         onUpdateName={setWorkflowName}
         isRunning={isRunning}
         onRun={handleRunWorkflow}
         onStop={handleStopWorkflow}
-        onZoomIn={() => reactFlowInstance.zoomIn()}
-        onZoomOut={() => reactFlowInstance.zoomOut()}
-        onFitView={() => reactFlowInstance.fitView({ padding: 0.2 })}
+        onReset={handleResetCanvas}
+        onSave={saveToIndexedDb}
         extensionStatus={extensionStatus}
         mockMode={mockMode}
         onToggleMockMode={handleToggleMockMode}
         onOpenExtensionModal={() => setIsExtensionModalOpen(true)}
       />
 
-      {/* Main Studio Body */}
-      <div className="flex-1 flex relative overflow-hidden">
-        {/* Left: Node Palette */}
-        <MuseNodePalette onAddNode={handleAddNode} />
-
-        {/* Center: Canvas Viewport */}
-        <div
-          className="flex-1 h-full relative bg-[#0e1011] overflow-hidden"
-          onDragOver={onDragOver}
-          onDrop={onDrop}
-        >
-          <DotPattern
-            className="absolute inset-0 size-full pointer-events-none z-0 opacity-25 text-stone-700"
-            width={24}
-            height={24}
-            cx={1}
-            cy={1}
-            cr={1.2}
-          />
-
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={onNodeClick}
-            onPaneClick={onPaneClick}
-            onPaneContextMenu={onPaneContextMenu}
-            nodeTypes={nodeTypes}
-            fitView
-            minZoom={0.2}
-            maxZoom={2}
-          >
-            <Controls className="!bg-[#151718] !border-[#26292b] !rounded-xl !shadow-xl overflow-hidden !fill-stone-300 z-10" />
-            <MiniMap
-              className="!bg-[#151718] !border-[#26292b] !rounded-xl !shadow-xl overflow-hidden z-10"
-              nodeColor={() => '#10b981'}
-              maskColor="rgba(0, 0, 0, 0.4)"
-            />
-          </ReactFlow>
-
-          {/* Right-click Context Menu */}
-          <BlurGlideContextMenu
-            isOpen={contextMenu.isOpen}
-            x={contextMenu.x}
-            y={contextMenu.y}
-            onClose={() => setContextMenu((prev) => ({ ...prev, isOpen: false }))}
-            panel={canvasContextMenuPanel}
-            onSelectAction={handleContextMenuAction}
-          />
-        </div>
-
-        {/* Right: Inspector */}
-        <MuseInspector
-          selectedNode={selectedNode}
-          onClose={() => setSelectedNodeId(null)}
-          onUpdateNodeData={handleUpdateNodeData}
-          onDeleteNode={handleDeleteNode}
-          onDuplicateNode={handleDuplicateNode}
+      {/* 2. Full-Screen Canvas Area */}
+      <div className="flex-1 relative w-full h-full bg-[#08090b] overflow-hidden">
+        {/* Left Floating Action Dock (Matches Screenshot 100%) */}
+        <LeftFloatingDock
+          onOpenAddModal={() => setIsAddModalOpen(true)}
+          isRunning={isRunning}
+          onRunWorkflow={handleRunWorkflow}
+          onStopWorkflow={handleStopWorkflow}
+          onFitView={handleRecenter}
         />
+
+        {/* Bottom-Left & Bottom-Center Floating Controls (Matches Screenshot 100%) */}
+        <BottomFloatingControls
+          zoomPercent={zoomPercent}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onRecenter={handleRecenter}
+        />
+
+        {/* Hardware-Accelerated High-Performance React Flow Canvas */}
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
+          onNodeDragStop={onNodeDragStop}
+          onSelectionDragStop={onSelectionDragStop}
+          onMoveEnd={onMoveEnd}
+          nodeTypes={nodeTypes}
+          onlyRenderVisibleElements={true}
+          elevateNodesOnSelect={false}
+          nodesDraggable={true}
+          nodesConnectable={true}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.75 }}
+          minZoom={0.15}
+          maxZoom={2.5}
+          proOptions={{ hideAttribution: true }}
+          className="bg-[#08090b]"
+        >
+          {/* Native High-Performance Dot Grid */}
+          <Background
+            color="#22262d"
+            gap={24}
+            size={1.2}
+            className="opacity-40"
+          />
+        </ReactFlow>
+
+        {/* Node Inspector Drawer (Optional, when node is clicked) */}
+        {selectedNode && (
+          <div className="absolute top-4 right-4 z-20">
+            <MuseInspector
+              selectedNode={selectedNode}
+              onClose={() => setSelectedNodeId(null)}
+              onUpdateNodeData={(id, data) => {
+                setNodes((nds) =>
+                  nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n))
+                );
+                saveToIndexedDb();
+              }}
+              onDeleteNode={(id) => {
+                setNodes((nds) => nds.filter((n) => n.id !== id));
+                setSelectedNodeId(null);
+                saveToIndexedDb();
+              }}
+              onDuplicateNode={(id) => {
+                const target = nodes.find((n) => n.id === id);
+                if (target) {
+                  const copyNode: Node = {
+                    ...target,
+                    id: `${target.type}-${Date.now().toString().slice(-4)}`,
+                    position: { x: target.position.x + 40, y: target.position.y + 40 },
+                  };
+                  setNodes((nds) => [...nds, copyNode]);
+                  saveToIndexedDb();
+                }
+              }}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Bottom: Execution Timeline */}
-      <MuseExecutionPanel
-        status={runStatus}
-        activeNodeId={activeNodeId}
-        activePhase={activePhase}
-        phaseDetails={phaseDetails}
-        elapsedSeconds={elapsedSeconds}
-        logs={executionLogs}
-        onStop={handleStopWorkflow}
-        onRetry={handleRunWorkflow}
-        onClearLogs={() => setExecutionLogs([])}
+      {/* Quick Add Node Modal */}
+      <QuickNodeModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSelectNode={handleAddNode}
       />
 
       {/* Chrome Extension Setup Modal */}

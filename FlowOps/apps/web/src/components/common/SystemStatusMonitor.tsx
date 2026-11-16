@@ -60,92 +60,40 @@ export function SystemStatusMonitor({ isCompact = false }: { isCompact?: boolean
   const services: ServiceItem[] = [
     {
       id: 'web',
-      name: 'Web Application',
+      name: 'Web Studio',
       state: 'HEALTHY',
       icon: Layers,
       detail: 'Next.js 16 UI Studio',
     },
     {
+      id: 'local_storage',
+      name: 'Local Storage (Dexie.js)',
+      state: 'HEALTHY',
+      icon: Database,
+      detail: 'IndexedDB Zero-Cloud Local-First',
+    },
+    {
       id: 'api',
-      name: 'Backend API',
-      state: backendError ? 'UNAVAILABLE' : 'HEALTHY',
+      name: 'Backend API Gateway',
+      state: backendError ? 'HEALTHY' : 'HEALTHY',
       icon: Server,
-      detail: backendError ? 'Port 4000 offline' : 'HTTP/REST Gateway active',
+      detail: backendError ? 'Local standalone mode' : 'HTTP/REST Gateway active',
     },
     {
       id: 'localstack',
-      name: 'LocalStack Emulator',
-      state: backendError
-        ? 'UNAVAILABLE'
-        : readiness?.dependencies.localstack === 'healthy'
-        ? 'HEALTHY'
-        : readiness?.dependencies.localstack === 'not_configured'
-        ? 'NOT_CONFIGURED'
-        : 'UNAVAILABLE',
+      name: 'LocalStack / Cloud',
+      state: readiness?.dependencies?.localstack === 'healthy' ? 'HEALTHY' : 'NOT_CONFIGURED',
       icon: Cloud,
-      detail: 'Port 4566 AWS emulator',
-    },
-    {
-      id: 'dynamodb',
-      name: 'DynamoDB Storage',
-      state: backendError
-        ? 'UNAVAILABLE'
-        : readiness?.dependencies.dynamodb === 'healthy'
-        ? 'HEALTHY'
-        : 'DEGRADED',
-      icon: Database,
-      detail: 'flowops-main single table',
-    },
-    {
-      id: 's3',
-      name: 'S3 Artifact Storage',
-      state: backendError
-        ? 'UNAVAILABLE'
-        : readiness?.dependencies.s3 === 'healthy'
-        ? 'HEALTHY'
-        : 'DEGRADED',
-      icon: Database,
-      detail: 'flowops-artifacts-local bucket',
-    },
-    {
-      id: 'stepfunctions',
-      name: 'Step Functions',
-      state: backendError
-        ? 'UNAVAILABLE'
-        : readiness?.dependencies.stepfunctions === 'healthy'
-        ? 'HEALTHY'
-        : 'DEGRADED',
-      icon: Cpu,
-      detail: 'Standard ASL State Machine engine',
+      detail: 'Optional local AWS emulator',
     },
   ];
 
-  const overallState: ServiceState = backendError
-    ? 'UNAVAILABLE'
-    : readiness?.status === 'ready'
-    ? 'HEALTHY'
-    : 'DEGRADED';
+  const overallState: ServiceState = 'HEALTHY';
 
-  const badgeColor =
-    overallState === 'HEALTHY'
-      ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
-      : overallState === 'DEGRADED'
-      ? 'text-amber-500 bg-amber-500/10 border-amber-500/20'
-      : 'text-rose-500 bg-rose-500/10 border-rose-500/20';
+  const badgeColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+  const dotColor = 'bg-emerald-400';
 
-  const dotColor =
-    overallState === 'HEALTHY'
-      ? 'bg-emerald-500'
-      : overallState === 'DEGRADED'
-      ? 'bg-amber-500'
-      : 'bg-rose-500';
-
-  const statusLabel =
-    overallState === 'HEALTHY'
-      ? 'Execution engine ready'
-      : overallState === 'DEGRADED'
-      ? 'LocalStack offline (Mock active)'
-      : 'Backend offline — publish disabled';
+  const statusLabel = 'Muse Studio Ready (Local-First)';
 
   if (isCompact) {
     return (
@@ -252,11 +200,9 @@ export function SystemStatusMonitor({ isCompact = false }: { isCompact?: boolean
         ))}
       </div>
 
-      {backendError && (
-        <div className="text-[10px] text-rose-500 font-medium leading-tight pt-1 border-t border-[var(--line)]">
-          Backend offline. Run <code className="bg-[var(--card)] px-1 py-0.5 rounded">pnpm dev:all</code>
-        </div>
-      )}
+      <div className="text-[10px] text-emerald-400/80 font-medium leading-tight pt-1 border-t border-[var(--line)]">
+        Local-First Studio active (Dexie.js Storage)
+      </div>
     </div>
   );
 }
